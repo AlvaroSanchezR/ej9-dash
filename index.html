@@ -291,6 +291,12 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
     <div class="cfg"><label for="fillL">Litros que han entrado</label><input id="fillL" type="number" step="0.01" placeholder="vacío = inicio"></div>
     <button class="b" id="fillBtn">Registrar depósito lleno</button>
     <p class="note" id="fillMsg">Para calibrar: llena el depósito hasta arriba y pulsa Registrar sin poner litros. En el siguiente lleno escribe los litros que han entrado y pulsa Registrar; la app ajusta su factor sola.</p>
+    <h3 class="sub">CUENTAKILÓMETROS Y WIDGET</h3>
+    <div class="cfg"><label for="cfgOdo">Km actuales del coche</label><input id="cfgOdo" type="number" step="1" placeholder="ej. 214500"></div>
+    <p class="note" id="odoInfo"></p>
+    <div class="cfg"><label for="cfgHook">Enlace del widget</label><input id="cfgHook" type="text" placeholder="https://script.google.com/…/exec"></div>
+    <button class="b" id="odoSend">Enviar km ahora</button>
+    <p class="note">Pon una vez los km del cuentakilómetros: la app suma lo que recorres con el adaptador conectado y los envía al enlace (Google Sheets) para que el widget de KWGT los lea. Se envían al desconectar y cada 2 km.</p>
     <h3 class="sub">AVISOS</h3>
     <label class="chk" for="cfgSound">Avisos con sonido (agua, batería, averías nuevas)<input id="cfgSound" type="checkbox"></label>
     <button class="b" id="testSound">Probar sonido</button>
@@ -309,14 +315,14 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v1.3 · 11/11/2026 15:12"; // se cambia con cada actualización
+const APP_VERSION = "v1.4 · 11/11/2026 15:30"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "iat", "tps", "mapm"];
 const DEF_CELLS = ["volt", "adv", "fuel", "stft", "o2", "ltft"];
 const SHOP = ["rpm", "spd", "water", "iat", "tps", "mapm", "adv", "fuel", "stft", "ltft", "o2", "volt"];
 const DEF = { red: 7000, shift: 6500, vtec: 0, water: 105, volt: 12.0, name: "Civic EJ9", cc: 1396, price: 1.55, fcal: 1.0, gears: GEARS_EJ9,
-  arcs: DEF_ARCS.slice(), cells: DEF_CELLS.slice(), view: "full", night: "auto", sound: true, autoConn: true, lastConn: "" };
+  arcs: DEF_ARCS.slice(), cells: DEF_CELLS.slice(), view: "full", night: "auto", sound: true, autoConn: true, lastConn: "", hook: "" };
 let cfg = { ...DEF };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem("ej9cfg2") || "{}")); } catch (e) {}
 
@@ -489,7 +495,23 @@ const HLEN = 90;
 let tank = { started: false, km: 0, lraw: 0 };
 try { Object.assign(tank, JSON.parse(localStorage.getItem("ej9tank") || "{}")); } catch (e) {}
 const saveTank = () => { try { localStorage.setItem("ej9tank", JSON.stringify(tank)); } catch (e) {} };
-setInterval(() => { if (connected) saveTank(); }, 10000);
+setInterval(() => { if (connected) { saveTank(); saveOdo(); } }, 10000);
+
+/* Cuentakilómetros: km reales metidos a mano + lo recorrido con el adaptador conectado */
+let odo = { km: null, sent: null };
+try { Object.assign(odo, JSON.parse(localStorage.getItem("ej9odo") || "{}")); } catch (e) {}
+const saveOdo = () => { try { localStorage.setItem("ej9odo", JSON.stringify(odo)); } catch (e) {} };
+async function sendOdo(force) {
+  if (!cfg.hook || odo.km == null) return false;
+  if (!force && odo.sent != null && odo.km - odo.sent < 0.05) return false;
+  const body = JSON.stringify({ km: Math.round(odo.km), viaje_km: +trip.dist.toFixed(2), viaje_l: +(trip.lraw * cfg.fcal).toFixed(2), coche: cfg.name, fecha: new Date().toISOString() });
+  try {
+    await fetch(cfg.hook, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body });
+    odo.sent = odo.km; saveOdo(); log("Km enviados al widget: " + Math.round(odo.km));
+    return true;
+  } catch (e) { log("No se pudieron enviar los km: " + e.message); return false; }
+}
+setInterval(() => { if (connected && odo.km != null && (odo.sent == null || odo.km - odo.sent >= 2)) sendOdo(); }, 15000);
 
 /* Consumo estimado por densidad de aire (MAP + temperatura + rpm + cilindrada), o por caudalímetro si lo hay */
 const VE = 0.85, AFR = 14.7, DENS = 740; // llenado medio, mezcla estequiométrica, g/L de gasolina
@@ -574,6 +596,7 @@ function setVal(k, v) {
       const dk = v * Math.min(2000, now - trip.last) / 3600000;
       trip.dist += dk;
       if (connected && tank.started) tank.km += dk;
+      if (connected && odo.km != null) odo.km += dk;
     }
     trip.last = now; trip.vmax = Math.max(trip.vmax, v);
     perfSample(v, now);
@@ -826,6 +849,7 @@ async function initElm() {
 }
 function onDisconnect() { if (connected) { log("Adaptador desconectado"); toast("Se ha perdido la conexión con el adaptador", "crit"); } cleanup(); }
 function cleanup() {
+  if (connected) { saveOdo(); saveTank(); sendOdo(); }
   running = false; connected = false; rx = tx = null; writeFn = null; pending = null;
   if (demoT) status("Demo", "demo"); else status("Desconectado", "");
   $("connBtn").textContent = "Conectar OBD"; $("connBle").hidden = false;
@@ -1026,6 +1050,7 @@ function openCfg() {
   NUM_FIELDS.forEach(([id, k]) => $(id).value = cfg[k]);
   $("cfgName").value = cfg.name; $("fillL").value = "";
   $("cfgSound").checked = cfg.sound; $("cfgAuto").checked = cfg.autoConn;
+  $("cfgOdo").value = odo.km != null ? Math.round(odo.km) : ""; $("cfgHook").value = cfg.hook; odoInfo();
   gearInfo(); tankInfo(); openOv("cfgOv");
 }
 NUM_FIELDS.forEach(([id, k]) =>
@@ -1068,6 +1093,21 @@ $("connBtn").onclick = () => {
   userOff = false; navigator.serial ? connectSerial() : connect();
 };
 $("connBle").onclick = () => { if (!connected) { userOff = false; connect(); } };
+function odoInfo() {
+  $("odoInfo").textContent = odo.km == null ? "Todavía no has puesto los km del coche."
+    : `Cuentakilómetros: ${Math.round(odo.km).toLocaleString("es-ES")} km` + (odo.sent != null ? ` · último envío al widget: ${Math.round(odo.sent).toLocaleString("es-ES")} km` : " · sin enviar todavía");
+}
+$("cfgOdo").addEventListener("change", e => {
+  const v = parseFloat(e.target.value);
+  if (isNaN(v) || v < 0) return;
+  odo.km = v; odo.sent = null; saveOdo(); odoInfo(); sendOdo(true).then(odoInfo);
+});
+$("cfgHook").addEventListener("change", e => { cfg.hook = e.target.value.trim(); saveCfg(); });
+$("odoSend").onclick = async () => {
+  if (!cfg.hook) { $("odoInfo").textContent = "Pega primero el enlace del widget."; return; }
+  if (odo.km == null) { $("odoInfo").textContent = "Pon primero los km actuales del coche."; return; }
+  $("odoInfo").textContent = (await sendOdo(true)) ? "Enviado. El widget lo mostrará en su próxima actualización." : "No se ha podido enviar. Revisa el enlace y la conexión a internet.";
+};
 $("cfgSound").onchange = e => { cfg.sound = e.target.checked; saveCfg(); };
 $("cfgAuto").onchange = e => { cfg.autoConn = e.target.checked; saveCfg(); };
 $("testSound").onclick = () => { unlockAudio(); beep("crit"); };
