@@ -296,6 +296,8 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
     <p class="note" id="odoInfo"></p>
     <div class="cfg"><label for="cfgHook">Enlace del widget</label><input id="cfgHook" type="text" placeholder="https://script.google.com/…/exec"></div>
     <button class="b" id="odoSend">Enviar km ahora</button>
+    <button class="b" id="kwgtCopy">Copiar fórmula para KWGT</button>
+    <p class="note" id="kwgtMsg">Copia la fórmula ya hecha con tu enlace y pégala en el texto de los km de KWGT. Cada vez que la copias cambia un número al final, así KWGT vuelve a leer los km al momento.</p>
     <p class="note">Pon una vez los km del cuentakilómetros: la app suma lo que recorres con el adaptador conectado y los envía al enlace (Google Sheets) para que el widget de KWGT los lea. Se envían al desconectar y cada 2 km.</p>
     <h3 class="sub">AVISOS</h3>
     <label class="chk" for="cfgSound">Avisos con sonido (agua, batería, averías nuevas)<input id="cfgSound" type="checkbox"></label>
@@ -315,7 +317,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v1.4 · 11/11/2026 15:30"; // se cambia con cada actualización
+const APP_VERSION = "v1.5 · 11/11/2026 16:02"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "iat", "tps", "mapm"];
@@ -1107,6 +1109,13 @@ $("odoSend").onclick = async () => {
   if (!cfg.hook) { $("odoInfo").textContent = "Pega primero el enlace del widget."; return; }
   if (odo.km == null) { $("odoInfo").textContent = "Pon primero los km actuales del coche."; return; }
   $("odoInfo").textContent = (await sendOdo(true)) ? "Enviado. El widget lo mostrará en su próxima actualización." : "No se ha podido enviar. Revisa el enlace y la conexión a internet.";
+};
+$("kwgtCopy").onclick = async () => {
+  if (!cfg.hook) { $("kwgtMsg").textContent = "Pega primero el enlace del widget."; return; }
+  const url = cfg.hook.split("?")[0] + "?r=" + Date.now().toString(36);
+  const f = `$tc(reg, wg("${url}", json, .km) + gv(km), "(\\d)(?=(\\d{3})+$)", "$1,")$ km`;
+  try { await navigator.clipboard.writeText(f); $("kwgtMsg").textContent = "Copiada. Pégala en KWGT sustituyendo la fórmula entera del texto de los km."; }
+  catch (e) { $("kwgtMsg").textContent = f; }
 };
 $("cfgSound").onchange = e => { cfg.sound = e.target.checked; saveCfg(); };
 $("cfgAuto").onchange = e => { cfg.autoConn = e.target.checked; saveCfg(); };
