@@ -148,6 +148,27 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 .chk{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px}
 .chk input{width:22px;height:22px;accent-color:var(--red)}
 
+/* Luz de cambio a pantalla completa */
+.shiftFlash{position:fixed;inset:0;z-index:12;pointer-events:none;background:transparent}
+.shiftFlash.on{animation:sflash .18s steps(1) infinite}
+@keyframes sflash{0%{background:rgba(227,23,10,.55)}50%{background:transparent}}
+@media (prefers-reduced-motion:reduce){.shiftFlash.on{animation:none;background:rgba(227,23,10,.4)}}
+
+/* Pantalla de fuerzas G */
+.gview{height:100%;display:grid;grid-template-columns:auto minmax(0,1fr);gap:24px;align-items:center;padding-block:10px 24px;box-sizing:border-box}
+.gview canvas{height:calc(100vh - 60px);max-height:100%;aspect-ratio:1;max-width:60vw;display:block;margin-left:56px}
+.gside{display:flex;flex-direction:column;gap:10px;min-width:0;max-width:340px}
+.gnums{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gnums div{background:#0d0d0d;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.gnums b{display:block;font-size:clamp(20px,4vw,32px);font-variant-numeric:tabular-nums}
+.gnums span{font-size:11px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+@media (orientation:portrait){
+  .gview{height:auto;grid-template-columns:1fr;padding-block:64px 30px}
+  .gview canvas{width:100%;height:auto;max-width:100%;margin-left:0}
+  .gside{max-width:none}
+}
+.cfg select{background:#000;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px;font-family:var(--ui);font-size:14px;max-width:190px}
+
 /* Modo noche */
 .night{--fg:#c4c4c4;--ink:#dcdcdc;--dim:#6f6f6f}
 .night canvas{opacity:.65}
@@ -176,10 +197,32 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 
 <div class="shop" id="shop" hidden></div>
 
+<div class="gview" id="gview" hidden>
+  <canvas id="gCv"></canvas>
+  <div class="gside">
+    <div class="gnums">
+      <div><b id="gLon">0.00</b><span>acelerar / frenar g</span></div>
+      <div><b id="gLat">0.00</b><span>curva g</span></div>
+      <div><b id="gMA">0.00</b><span>máx. aceleración</span></div>
+      <div><b id="gMB">0.00</b><span>máx. frenada</span></div>
+      <div><b id="gML">0.00</b><span>máx. curva izq.</span></div>
+      <div><b id="gMR">0.00</b><span>máx. curva der.</span></div>
+    </div>
+    <div class="btns">
+      <button class="b" id="gCal">Calibrar (parado)</button>
+      <button class="b" id="gReset">Borrar máximos</button>
+    </div>
+    <p class="note" id="gNote">Pon el móvil fijo en el soporte, en horizontal y mirando hacia ti. Con el coche parado pulsa Calibrar.</p>
+  </div>
+</div>
+
+<div class="shiftFlash" id="shiftFlash"></div>
+
 <nav class="dots" id="dots" aria-label="Pantallas">
   <button data-v="street" aria-label="Pantalla calle"></button>
   <button data-v="full" aria-label="Pantalla completa"></button>
   <button data-v="shop" aria-label="Pantalla taller"></button>
+  <button data-v="g" aria-label="Pantalla fuerzas G"></button>
 </nav>
 
 <button class="menu" id="menuBtn" aria-label="Menú"><i></i></button>
@@ -221,6 +264,42 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
   </div>
 </div>
 
+<div class="overlay" id="dynoOv" hidden>
+  <div class="sheet wide">
+    <h2>DINAMÓMETRO <span id="dynoInfo"></span></h2>
+    <div class="perfState" id="dynoState">Pulsa Preparar.</div>
+    <canvas class="logc" id="dynoCv"></canvas>
+    <div class="perf">
+      <div><b id="dCv">-</b><span id="dCvR">CV máx.</span></div>
+      <div><b id="dNm">-</b><span id="dNmR">Nm máx.</span></div>
+    </div>
+    <div class="btns">
+      <button class="b pri" id="dynoArm">Preparar</button>
+      <button class="b" id="dynoClose">Cerrar</button>
+    </div>
+    <p class="note">En 3ª, a unas 2000 rpm, pulsa Preparar y pisa a fondo hasta el corte. Mide al llegar al acelerador a fondo y para al soltar o al cambiar. La línea discontinua es la medición anterior, para comparar. Es una estimación a partir del peso del coche (Ajustes): sirve para comparar antes y después de un cambio, no como banco de potencia. Úsalo solo en circuito o lugar cerrado.</p>
+  </div>
+</div>
+
+<div class="overlay" id="gpsOv" hidden>
+  <div class="sheet">
+    <h2>VELOCIDAD REAL (GPS)</h2>
+    <div class="perf">
+      <div><b id="gpsV">-</b><span>GPS km/h</span></div>
+      <div><b id="carV">-</b><span>coche km/h</span></div>
+      <div><b id="gpsD">-</b><span>diferencia ahora</span></div>
+      <div><b id="gpsAvg">-</b><span id="gpsN">media · 0 muestras</span></div>
+    </div>
+    <p class="perfState" id="gpsMsg">Pulsa Empezar con el adaptador conectado.</p>
+    <div class="btns">
+      <button class="b pri" id="gpsStart">Empezar</button>
+      <button class="b" id="gpsApply">Aplicar corrección</button>
+    </div>
+    <button class="b" id="gpsClose">Cerrar</button>
+    <p class="note">Circula un rato por encima de 30 km/h a velocidad constante (autovía es lo ideal). La app compara la velocidad del coche con la del GPS y calcula cuánto marca de más. Al aplicarla se corrigen la velocidad en pantalla, los viajes y el consumo. El cuentakilómetros del widget no se toca, para que siga cuadrando con el del coche.</p>
+  </div>
+</div>
+
 <div class="overlay" id="pickOv" hidden>
   <div class="sheet">
     <h2 id="pickTitle">ELEGIR DATO</h2>
@@ -247,6 +326,8 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
       <button class="b" id="recBtn">Grabar datos</button>
       <button class="b" id="logBtn" hidden>Ver grabación</button>
       <button class="b" id="perfBtn">Cronómetro 0–100</button>
+      <button class="b" id="dynoBtn">Dinamómetro</button>
+      <button class="b" id="gpsBtn">Velocidad real (GPS)</button>
       <button class="b" id="closeMenu">Cerrar</button>
     </div>
   </div>
@@ -278,6 +359,10 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
     <div class="cfg"><label for="cfgVtec">VTEC (rpm, 0 = apagado)</label><input id="cfgVtec" type="number" step="100"></div>
     <div class="cfg"><label for="cfgWater">Aviso agua (°C)</label><input id="cfgWater" type="number" step="1"></div>
     <div class="cfg"><label for="cfgVolt">Aviso batería bajo (V)</label><input id="cfgVolt" type="number" step="0.1"></div>
+    <div class="cfg"><label for="cfgTheme">Estilo de la esfera</label><select id="cfgTheme"></select></div>
+    <label class="chk" for="cfgFlash">Luz de cambio a pantalla completa<input id="cfgFlash" type="checkbox"></label>
+    <div class="cfg"><label for="cfgMass">Peso con conductor (kg)</label><input id="cfgMass" type="number" step="10"></div>
+    <div class="cfg"><label for="cfgSpdCorr">Corrección de velocidad</label><input id="cfgSpdCorr" type="number" step="0.001"></div>
     <h3 class="sub">MARCHAS</h3>
     <p class="note" id="gearInfo"></p>
     <div class="btns">
@@ -317,14 +402,14 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v1.6 · 11/11/2026 16:10"; // se cambia con cada actualización
+const APP_VERSION = "v1.7 · 11/11/2026 16:40"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "iat", "tps", "mapm"];
 const DEF_CELLS = ["volt", "adv", "fuel", "stft", "o2", "ltft"];
 const SHOP = ["rpm", "spd", "water", "iat", "tps", "mapm", "adv", "fuel", "stft", "ltft", "o2", "volt"];
 const DEF = { red: 7000, shift: 6500, vtec: 0, water: 105, volt: 12.0, name: "Civic EJ9", cc: 1396, price: 1.55, fcal: 1.0, gears: GEARS_EJ9,
-  arcs: DEF_ARCS.slice(), cells: DEF_CELLS.slice(), view: "full", night: "auto", sound: true, autoConn: true, lastConn: "", hook: "" };
+  arcs: DEF_ARCS.slice(), cells: DEF_CELLS.slice(), view: "full", night: "auto", sound: true, autoConn: true, lastConn: "", hook: "", theme: "blanca", flash: true, mass: 1130, spdCorr: 1 };
 let cfg = { ...DEF };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem("ej9cfg2") || "{}")); } catch (e) {}
 
@@ -396,6 +481,14 @@ function buildCells() {
   $("shop").innerHTML = SHOP.map((k, i) => cellHtml("s", i, k)).join("");
 }
 
+/* Estilos de esfera */
+const THEMES = {
+  blanca:  { n: "Blanca (HonDash)",        a: "#c9c9c9", b: "#f6f6f6", tick: "#111",    num: "#111",    halo: "#d4d4d4", glow: .5 },
+  negra:   { n: "Negra con números rojos", a: "#0b0b0b", b: "#222",    tick: "#e8e8e8", num: "#e3170a", halo: "#141414", glow: .12 },
+  azul:    { n: "Azul años 90",            a: "#0b2563", b: "#1f56c4", tick: "#fff",    num: "#fff",    halo: "#15408f", glow: .25 },
+  carbono: { n: "Carbono",                 a: "#000",    b: "#3a3a3a", tick: "#f0f0f0", num: "#f0f0f0", halo: "#1b1b1b", glow: .15, carbon: true },
+};
+
 /* ---------- Construcción del reloj ---------- */
 const svg = $("dash");
 const R = {};
@@ -405,13 +498,21 @@ function build() {
   MAXRPM = Math.ceil((cfg.red + 600) / 1000) * 1000;
   SENSORS.rpm.max = MAXRPM;
   const N = nightNow;
+  const T = THEMES[cfg.theme] || THEMES.blanca;
+  const E = N && T === THEMES.blanca ? { a: "#1f1f1f", b: "#333", tick: "#dcdcdc", num: "#dcdcdc", halo: "#262626", glow: .08 } : { ...T, glow: N ? .08 : T.glow };
   const defs = el("defs", {});
   const rg = el("radialGradient", { id: "halo" }, defs);
-  el("stop", { offset: "82%", "stop-color": "#fff", "stop-opacity": N ? ".08" : ".5" }, rg);
+  el("stop", { offset: "82%", "stop-color": "#fff", "stop-opacity": String(E.glow) }, rg);
   el("stop", { offset: "100%", "stop-color": "#fff", "stop-opacity": "0" }, rg);
   const fg = el("radialGradient", { id: "face" }, defs);
-  el("stop", { offset: "70%", "stop-color": N ? "#1f1f1f" : "#c9c9c9" }, fg);
-  el("stop", { offset: "100%", "stop-color": N ? "#333" : "#f6f6f6" }, fg);
+  el("stop", { offset: "70%", "stop-color": E.a, "stop-opacity": E.carbon ? ".55" : "1" }, fg);
+  el("stop", { offset: "100%", "stop-color": E.b, "stop-opacity": E.carbon ? ".35" : "1" }, fg);
+  if (E.carbon) {
+    const pat = el("pattern", { id: "carbon", width: 6, height: 6, patternUnits: "userSpaceOnUse" }, defs);
+    el("rect", { width: 6, height: 6, fill: "#141414" }, pat);
+    el("rect", { width: 3, height: 3, fill: "#262626" }, pat);
+    el("rect", { x: 3, y: 3, width: 3, height: 3, fill: "#262626" }, pat);
+  }
   const lg = el("linearGradient", { id: "rz", x1: "0", y1: "0", x2: "1", y2: "0" }, defs);
   el("stop", { offset: "0", "stop-color": "#e3170a", "stop-opacity": N ? ".2" : ".35" }, lg);
   el("stop", { offset: "1", "stop-color": "#e3170a", "stop-opacity": N ? ".7" : "1" }, lg);
@@ -441,6 +542,7 @@ function build() {
 
   // Esfera
   el("circle", { cx: CX, cy: CY, r: R_FACE + 12, fill: "url(#halo)" });
+  if (E.carbon) el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#carbon)" });
   el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#face)" });
   el("path", { d: sector(R_IN + 14, R_FACE, rpmAngle(cfg.red), A_START + A_SPAN), fill: "url(#rz)" });
   el("circle", { cx: CX, cy: CY, r: R_IN, fill: "var(--bg)" });
@@ -452,8 +554,8 @@ function build() {
     const a = rpmAngle(v), major = v % 1000 === 0, half = v % 500 === 0;
     const r0 = major ? R_FACE - 24 : half ? R_FACE - 16 : R_FACE - 10;
     const [x1, y1] = P(r0, a), [x2, y2] = P(R_FACE - 2, a);
-    el("line", { x1, y1, x2, y2, class: "tick" + (v > cfg.red ? " rz" : ""), "stroke-width": major ? 4 : half ? 2.5 : 1.5 });
-    if (major) { const [tx, ty] = P(R_FACE - 42, a); nums.push(el("text", { x: tx, y: ty, class: "num", "font-size": 30, stroke: v > cfg.red ? (N ? "#5e110b" : "#e3170a") : (N ? "#262626" : "#d4d4d4") }, v / 1000)); }
+    el("line", { x1, y1, x2, y2, class: "tick" + (v > cfg.red ? " rz" : ""), style: v > cfg.red ? "" : "stroke:" + E.tick, "stroke-width": major ? 4 : half ? 2.5 : 1.5 });
+    if (major) { const [tx, ty] = P(R_FACE - 42, a); nums.push(el("text", { x: tx, y: ty, class: "num", "font-size": 30, style: "fill:" + (v > cfg.red && E.num === "#e3170a" ? "#fff" : E.num), stroke: v > cfg.red ? (N ? "#5e110b" : "#e3170a") : E.halo }, v / 1000)); }
   }
   el("text", { x: CX, y: CY + 146, class: "brand" }, cfg.name || "");
 
@@ -561,14 +663,18 @@ function gearInfo() {
 }
 
 /* Aguja suave: la aguja persigue el último valor real repartiendo el movimiento entre lecturas */
-let dispRpm = 0, rpmDt = 150, lastRpmT = 0, lastFrame = 0, rpmSlope = 0, prevRpm = 0;
+let dispRpm = 0, rpmDt = 150, lastRpmT = 0, lastFrame = 0, rpmSlope = 0, prevRpm = 0, sweepT0 = 0;
+const flashEl = $("shiftFlash");
 function anim(t) {
   const dt = lastFrame ? Math.min(100, t - lastFrame) : 16; lastFrame = t;
   // Predicción: proyecta la última lectura con su ritmo de subida/bajada para compensar el retraso del OBD
   const since = lastRpmT ? Math.min(t - lastRpmT, rpmDt * 1.2) : 0;
   const target = V.rpm == null ? 0 : Math.max(0, Math.min(MAXRPM, V.rpm + rpmSlope * (since + rpmDt * 0.4)));
-  const tau = 30;
-  dispRpm += (target - dispRpm) * (1 - Math.exp(-dt / tau));
+  // Barrido de aguja al conectar: sube hasta el final y baja, como un cuadro de verdad
+  if (sweepT0) { const p = (t - sweepT0) / 1800; if (p < 1) dispRpm = MAXRPM * Math.sin(Math.PI * Math.max(0, p)); else sweepT0 = 0; }
+  else dispRpm += (target - dispRpm) * (1 - Math.exp(-dt / 30));
+  flashEl.classList.toggle("on", !!cfg.flash && !sweepT0 && dispRpm >= cfg.shift && (V.rpm || 0) >= cfg.shift - 300);
+  if (cfg.view === "g") drawG(t);
   if (R.needle && cfg.view === "full") {
     R.needle.setAttribute("transform", `rotate(${rpmAngle(dispRpm).toFixed(2)} ${CX} ${CY})`);
     R.needle.firstChild.setAttribute("fill", dispRpm >= cfg.shift ? "#ff5a4d" : "var(--red)");
@@ -596,12 +702,13 @@ function setVal(k, v) {
     if (!trip.t0) trip.t0 = now;
     if (trip.last) {
       const dk = v * Math.min(2000, now - trip.last) / 3600000;
-      trip.dist += dk;
-      if (connected && tank.started) tank.km += dk;
+      trip.dist += dk * cfg.spdCorr;
+      if (connected && tank.started) tank.km += dk * cfg.spdCorr;
       if (connected && odo.km != null) odo.km += dk;
     }
     trip.last = now; trip.vmax = Math.max(trip.vmax, v);
     perfSample(v, now);
+    gDemoSpeed(v, now);
   }
   if (k === "rpm" && v != null) {
     MAXV.rpm = Math.max(MAXV.rpm, v);
@@ -612,6 +719,7 @@ function setVal(k, v) {
     }
     prevRpm = v; lastRpmT = now;
     learnSample(v);
+    dynoSample(v, now);
     const lh = fuelLh();
     if (lh != null) {
       if (fuelT) {
@@ -684,7 +792,7 @@ function drawChart(c, k) {
 function render() {
   dirty = false;
   const gear = gearOf(V.rpm, V.spd);
-  R.spd.textContent = V.spd != null ? Math.round(V.spd) : "-";
+  R.spd.textContent = V.spd != null ? Math.round(V.spd * cfg.spdCorr) : "-";
   R.gear.textContent = gear;
 
   if (cfg.view === "full") {
@@ -703,7 +811,7 @@ function render() {
     renderCells("s", SHOP);
   } else {
     $("sGear").textContent = gear;
-    $("sSpd").textContent = V.spd != null ? Math.round(V.spd) : "-";
+    $("sSpd").textContent = V.spd != null ? Math.round(V.spd * cfg.spdCorr) : "-";
     $("sWater").textContent = fmtVal("water", V.water);
     $("sWaterBox").className = stateOf("water", V.water);
     const moving = V.fuel != null;
@@ -844,7 +952,7 @@ async function initElm() {
     stopDemo();
     if (cfg.lastConn !== via) { cfg.lastConn = via; saveCfg(); }
     connected = true; status("Conectado", "on"); $("connBtn").textContent = "Desconectar"; $("connBle").hidden = true;
-    dtcCount = null; toast("Conectado a la centralita", "ok");
+    dtcCount = null; toast("Conectado a la centralita", "ok"); sweepT0 = performance.now();
     for (const k in H) H[k] = [];
     resetTrip(); closeOv(); loop();
   } catch (e) { throw e; }
@@ -1017,12 +1125,12 @@ async function clearDtc() {
 let demoT = null;
 function startDemo() {
   if (connected) return;
-  stopDemo(); for (const k in H) H[k] = []; resetTrip(); status("Demo", "demo"); $("demoBtn").textContent = "Parar demo";
+  stopDemo(); for (const k in H) H[k] = []; resetTrip(); status("Demo", "demo"); $("demoBtn").textContent = "Parar demo"; sweepT0 = performance.now();
   let t = 0, rpm = 850, gear = 1, water = 62;
   demoT = setInterval(() => {
     t += 0.05;
     const phase = t % 14;
-    if (phase < 11) { rpm += 120 + 40 * Math.sin(t * 3) - gear * 16; if (rpm > cfg.shift + 150) { gear = Math.min(cfg.gears.length, gear + 1); rpm *= 0.68; } }
+    if (phase < 11) { rpm += 100 / Math.pow(gear, 1.3) + 4 * Math.sin(t * 3); if (rpm > cfg.shift + 150) { gear = Math.min(cfg.gears.length, gear + 1); rpm *= 0.68; } }
     else { rpm += (850 - rpm) * 0.12; if (phase > 13.8) gear = 1; }
     let spd = phase < 11 ? rpm / 1000 * cfg.gears[gear - 1] : Math.max(0, (V.spd || 0) * 0.86);
     if (phase >= 11 && spd < 3) spd = 0;
@@ -1038,11 +1146,11 @@ function startDemo() {
 function stopDemo() { if (demoT) { clearInterval(demoT); demoT = null; $("demoBtn").textContent = "Demo"; if (!connected) status("Desconectado", ""); } }
 
 /* ---------- UI ---------- */
-const OVS = ["menuOv", "dtcOv", "cfgOv", "pickOv", "logOv", "perfOv"];
+const OVS = ["menuOv", "dtcOv", "cfgOv", "pickOv", "logOv", "perfOv", "dynoOv", "gpsOv"];
 function openOv(id) { OVS.forEach(o => $(o).hidden = o !== id); }
-function closeOv() { OVS.forEach(o => $(o).hidden = true); $("clearBox").hidden = true; }
+function closeOv() { OVS.forEach(o => $(o).hidden = true); $("clearBox").hidden = true; gpsStop(); }
 OVS.forEach(o => $(o).addEventListener("click", e => { if (e.target.id === o) closeOv(); }));
-const NUM_FIELDS = [["cfgRed", "red"], ["cfgShift", "shift"], ["cfgVtec", "vtec"], ["cfgWater", "water"], ["cfgVolt", "volt"], ["cfgCc", "cc"], ["cfgPrice", "price"], ["cfgFcal", "fcal"]];
+const NUM_FIELDS = [["cfgRed", "red"], ["cfgShift", "shift"], ["cfgVtec", "vtec"], ["cfgWater", "water"], ["cfgVolt", "volt"], ["cfgCc", "cc"], ["cfgPrice", "price"], ["cfgFcal", "fcal"], ["cfgMass", "mass"], ["cfgSpdCorr", "spdCorr"]];
 function tankInfo() {
   $("tankInfo").textContent = tank.started
     ? `Desde el último lleno: ${tank.km.toFixed(1)} km y ${(tank.lraw * cfg.fcal).toFixed(2)} L estimados.`
@@ -1051,7 +1159,7 @@ function tankInfo() {
 function openCfg() {
   NUM_FIELDS.forEach(([id, k]) => $(id).value = cfg[k]);
   $("cfgName").value = cfg.name; $("fillL").value = "";
-  $("cfgSound").checked = cfg.sound; $("cfgAuto").checked = cfg.autoConn;
+  $("cfgSound").checked = cfg.sound; $("cfgAuto").checked = cfg.autoConn; $("cfgFlash").checked = cfg.flash; $("cfgTheme").value = cfg.theme;
   $("cfgOdo").value = odo.km != null ? Math.round(odo.km) : ""; $("cfgHook").value = cfg.hook; odoInfo();
   gearInfo(); tankInfo(); openOv("cfgOv");
 }
@@ -1162,13 +1270,13 @@ $("closePick").onclick = closeOv;
 function rebuild() { buildCells(); build(); status($("stat").textContent, mode); }
 
 /* ---------- Pantallas: calle · completa · taller ---------- */
-const VIEWS = ["street", "full", "shop"];
+const VIEWS = ["street", "full", "shop", "g"];
 const SEGS = [];
 for (let i = 0; i < 40; i++) SEGS.push($("sbar").appendChild(document.createElement("i")));
 function setView(v) {
   if (!VIEWS.includes(v)) v = "full";
   cfg.view = v; saveCfg();
-  $("app").hidden = v !== "full"; $("street").hidden = v !== "street"; $("shop").hidden = v !== "shop";
+  $("app").hidden = v !== "full"; $("street").hidden = v !== "street"; $("shop").hidden = v !== "shop"; $("gview").hidden = v !== "g";
   [...$("dots").children].forEach(b => b.classList.toggle("on", b.dataset.v === v));
   showDots();
   render();
@@ -1401,6 +1509,221 @@ async function toggleFull() {
 }
 document.addEventListener("fullscreenchange", () => { $("fullBtn").textContent = document.fullscreenElement ? "Salir de pantalla completa" : "Pantalla completa"; });
 $("fullBtn").onclick = () => { closeOv(); toggleFull(); };
+
+/* ---------- Ajustes nuevos: estilo de esfera y luz de cambio ---------- */
+$("cfgTheme").innerHTML = Object.keys(THEMES).map(k => `<option value="${k}">${THEMES[k].n}</option>`).join("");
+$("cfgTheme").onchange = e => { cfg.theme = e.target.value; saveCfg(); build(); status($("stat").textContent, mode); };
+$("cfgFlash").onchange = e => { cfg.flash = e.target.checked; saveCfg(); };
+
+/* ---------- Medidor de fuerzas G (sensores del móvil) ---------- */
+const GM = { lat: 0, lon: 0, offLat: 0, offLon: 0, g0: null, rawG: null, real: 0, max: { a: 0, b: 0, l: 0, r: 0 }, trail: [], demoLon: 0, lastSpd: null, lastSpdT: 0 };
+try { Object.assign(GM, JSON.parse(localStorage.getItem("ej9gcal") || "{}")); } catch (e) {}
+const saveGcal = () => { try { localStorage.setItem("ej9gcal", JSON.stringify({ offLat: GM.offLat, offLon: GM.offLon, g0: GM.g0 })); } catch (e) {} };
+function screenRight() {
+  const a = ((screen.orientation && screen.orientation.angle) || window.orientation || 0) % 360;
+  return a === 90 ? [0, -1, 0] : a === 270 || a === -90 ? [0, 1, 0] : a === 180 ? [-1, 0, 0] : [1, 0, 0];
+}
+window.addEventListener("devicemotion", e => {
+  const ig = e.accelerationIncludingGravity;
+  if (ig && ig.x != null) GM.rawG = [ig.x, ig.y, ig.z];
+  let x, y, z;
+  const a = e.acceleration;
+  if (a && a.x != null) { x = a.x; y = a.y; z = a.z; }
+  else if (GM.rawG) { if (!GM.g0) GM.g0 = GM.rawG.slice(); [x, y, z] = GM.rawG.map((v, i) => v - GM.g0[i]); }
+  else return;
+  const r = screenRight();
+  const lat = (x * r[0] + y * r[1] + z * r[2]) / 9.81 - GM.offLat;
+  const lon = -z / 9.81 - GM.offLon;   // el móvil mira al conductor: hacia delante es la parte trasera del móvil
+  GM.lat += (lat - GM.lat) * 0.12; GM.lon += (lon - GM.lon) * 0.12;
+  GM.real = performance.now();
+  gTrack();
+});
+function gDemoSpeed(v, now) {
+  if (GM.lastSpd != null && now > GM.lastSpdT) GM.demoLon += (((v - GM.lastSpd) / 3.6) / ((now - GM.lastSpdT) / 1000) / 9.81 - GM.demoLon) * 0.3;
+  GM.lastSpd = v; GM.lastSpdT = now;
+}
+function gTrack() {
+  const m = GM.max;
+  if (GM.lon > m.a) m.a = GM.lon;
+  if (-GM.lon > m.b) m.b = -GM.lon;
+  if (-GM.lat > m.l) m.l = -GM.lat;
+  if (GM.lat > m.r) m.r = GM.lat;
+}
+function drawG(t) {
+  if (performance.now() - GM.real > 2000 && demoT) {   // sin sensores reales: valores de la demo
+    GM.lon = GM.demoLon; GM.lat = 0.35 * Math.sin(t / 1300); gTrack();
+  }
+  const c = $("gCv"), dpr = window.devicePixelRatio || 1;
+  const w = Math.round(c.clientWidth * dpr); if (!w) return;
+  if (c.width !== w) { c.width = w; c.height = w; }
+  const ctx = c.getContext("2d"), R0 = w / 2, sc = (R0 - 14 * dpr) / 1.2;
+  ctx.clearRect(0, 0, w, w);
+  ctx.lineWidth = dpr; ctx.font = `${11 * dpr}px Roboto, sans-serif`; ctx.textAlign = "center";
+  [0.5, 1, 1.2].forEach((g, i) => {
+    ctx.beginPath(); ctx.arc(R0, R0, g * sc, 0, Math.PI * 2);
+    ctx.strokeStyle = i === 2 ? "#3a3a3a" : "#262626"; ctx.stroke();
+    if (i < 2) { ctx.fillStyle = "#666"; ctx.fillText(g.toFixed(1) + " g", R0, R0 - g * sc - 4 * dpr); }
+  });
+  ctx.strokeStyle = "#262626"; ctx.beginPath(); ctx.moveTo(R0, 0); ctx.lineTo(R0, w); ctx.moveTo(0, R0); ctx.lineTo(w, R0); ctx.stroke();
+  ctx.fillStyle = "#777";
+  ctx.fillText("FRENAR", R0, 12 * dpr); ctx.fillText("ACELERAR", R0, w - 4 * dpr);
+  // la bolita va hacia donde te empuja la fuerza: al frenar hacia delante (arriba), en curva a izquierda hacia la derecha
+  const bx = R0 - GM.lat * sc, by = R0 - GM.lon * sc;
+  GM.trail.push([bx, by]); if (GM.trail.length > 60) GM.trail.shift();
+  GM.trail.forEach(([x, y], i) => { ctx.fillStyle = `rgba(227,23,10,${(i / GM.trail.length) * 0.35})`; ctx.beginPath(); ctx.arc(x, y, 4 * dpr, 0, Math.PI * 2); ctx.fill(); });
+  ctx.fillStyle = "#e3170a"; ctx.beginPath(); ctx.arc(bx, by, 10 * dpr, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 2 * dpr; ctx.stroke();
+  if (Math.floor(t / 100) !== GM.lastTxt) {
+    GM.lastTxt = Math.floor(t / 100);
+    $("gLon").textContent = GM.lon.toFixed(2); $("gLat").textContent = GM.lat.toFixed(2);
+    $("gMA").textContent = GM.max.a.toFixed(2); $("gMB").textContent = GM.max.b.toFixed(2);
+    $("gML").textContent = GM.max.l.toFixed(2); $("gMR").textContent = GM.max.r.toFixed(2);
+  }
+}
+$("gCal").onclick = async () => {
+  try { if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) await DeviceMotionEvent.requestPermission(); } catch (e) {}
+  if (performance.now() - GM.real > 2000) { $("gNote").textContent = "No llegan datos de los sensores. Ábrela desde GitHub Pages en el móvil (en la vista previa o en el ordenador no hay sensores)."; return; }
+  if (GM.rawG) GM.g0 = GM.rawG.slice();
+  GM.offLat += GM.lat; GM.offLon += GM.lon; GM.lat = GM.lon = 0; GM.trail = [];
+  GM.max = { a: 0, b: 0, l: 0, r: 0 }; saveGcal();
+  $("gNote").textContent = "Calibrado. Si mueves el soporte, vuelve a calibrar con el coche parado.";
+};
+$("gReset").onclick = () => { GM.max = { a: 0, b: 0, l: 0, r: 0 }; GM.trail = []; };
+
+/* ---------- Dinamómetro virtual ---------- */
+const dyno = { state: "off", samples: [], gear: null, t0: 0 };
+let dynoRuns = [];
+try { dynoRuns = JSON.parse(localStorage.getItem("ej9dyno") || "[]"); } catch (e) {}
+const saveDyno = () => { try { localStorage.setItem("ej9dyno", JSON.stringify(dynoRuns.slice(-5))); } catch (e) {} };
+function dynoSample(rpm, now) {
+  if (dyno.state !== "armed" && dyno.state !== "run") return;
+  const tps = V.tps, gr = gearOf(rpm, V.spd);
+  if (dyno.state === "armed") {
+    if ((tps == null || tps > 70) && /^\d$/.test(gr) && rpm < cfg.red - 1500) {
+      Object.assign(dyno, { state: "run", gear: +gr, samples: [], t0: now }); dynoUI();
+    } else return;
+  }
+  dyno.samples.push([now / 1000, rpm]);
+  const n = dyno.samples.length;
+  if ((tps != null && tps < 50) || rpm >= cfg.red + 300 || now - dyno.t0 > 20000 || (n > 5 && rpm < dyno.samples[n - 4][1] - 150)) dynoFinish();
+}
+function dynoCompute(samples, gear) {
+  const k = cfg.gears[gear - 1];
+  if (!k || samples.length < 8) return null;
+  const m = cfg.mass, rho = 1.2, CdA = 0.62, Crr = 0.013, eff = 0.85;   // EJ9: Cd≈0,32 · 1,9 m²; 15 % de pérdidas en la transmisión
+  const pts = [];
+  for (const [ti] of samples) {
+    let n = 0, st = 0, sr = 0, stt = 0, str = 0;
+    for (const [t, r] of samples) if (Math.abs(t - ti) <= 0.5) { n++; st += t; sr += r; stt += t * t; str += t * r; }
+    const den = n * stt - st * st;
+    if (n < 3 || !den) continue;
+    const slope = (n * str - st * sr) / den, rpm = sr / n + slope * (ti - st / n);   // rpm/s y rpm suavizadas
+    const v = rpm / 1000 * k / 3.6, a = slope / 1000 * k / 3.6;
+    const Pw = m * a * v + 0.5 * rho * CdA * v ** 3 + Crr * m * 9.81 * v;
+    const Pc = Pw / eff;
+    if (rpm > 800) pts.push([rpm, Pc / 735.5, Pc / (rpm * Math.PI / 30)]);
+  }
+  const bins = {};
+  pts.forEach(([r, c, t]) => { const b = Math.round(r / 250) * 250; (bins[b] = bins[b] || []).push([c, t]); });
+  const curve = Object.keys(bins).map(Number).sort((a, b) => a - b)
+    .map(b => [b, bins[b].reduce((s, x) => s + x[0], 0) / bins[b].length, bins[b].reduce((s, x) => s + x[1], 0) / bins[b].length])
+    .filter(p => p[1] > 0);
+  if (curve.length < 4) return null;
+  const pc = curve.reduce((a, b) => b[1] > a[1] ? b : a), pn = curve.reduce((a, b) => b[2] > a[2] ? b : a);
+  return { date: new Date().toISOString(), gear, curve, cv: pc[1], cvRpm: pc[0], nm: pn[2], nmRpm: pn[0] };
+}
+function dynoFinish() {
+  // quita el final si las vueltas han caído (cambio de marcha o soltar el pedal)
+  let top = 0; dyno.samples.forEach((p, i) => { if (p[1] >= dyno.samples[top][1]) top = i; });
+  const res = dynoCompute(dyno.samples.slice(0, top + 1), dyno.gear);
+  dyno.state = "done";
+  if (res) { dynoRuns.push(res); saveDyno(); beep("ok"); toast(`Dinamómetro: ${Math.round(res.cv)} CV a ${res.cvRpm} rpm · ${Math.round(res.nm)} Nm`, "ok"); }
+  else toast("Dinamómetro: muy pocos datos. Prueba desde más abajo de vueltas.", "");
+  dynoUI();
+}
+function dynoUI() {
+  if ($("dynoOv").hidden) return;
+  const txt = { off: "Pulsa Preparar, mete 3ª a unas 2000 rpm y pisa a fondo.", armed: "Listo: pisa a fondo.", run: `Midiendo en ${dyno.gear}ª…`, done: "Terminado. Pulsa Preparar para otra." };
+  $("dynoState").textContent = txt[dyno.state];
+  $("dynoArm").textContent = dyno.state === "armed" || dyno.state === "run" ? "Cancelar" : "Preparar";
+  const last = dynoRuns[dynoRuns.length - 1], prev = dynoRuns[dynoRuns.length - 2];
+  $("dCv").textContent = last ? Math.round(last.cv) : "-"; $("dCvR").textContent = last ? `CV máx. a ${last.cvRpm} rpm` : "CV máx.";
+  $("dNm").textContent = last ? Math.round(last.nm) : "-"; $("dNmR").textContent = last ? `Nm máx. a ${last.nmRpm} rpm` : "Nm máx.";
+  $("dynoInfo").textContent = last ? new Date(last.date).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + ` · ${last.gear}ª` : "";
+  const c = $("dynoCv"), dpr = window.devicePixelRatio || 1;
+  const w = c.width = Math.round(c.clientWidth * dpr), h = c.height = Math.round(c.clientHeight * dpr);
+  const ctx = c.getContext("2d"); ctx.clearRect(0, 0, w, h);
+  const runs = [prev, last].filter(Boolean);
+  const maxCv = Math.max(60, ...runs.map(r => r.cv)) * 1.15, maxNm = Math.max(80, ...runs.map(r => r.nm)) * 1.15;
+  const r0 = 1000, r1 = MAXRPM, L = 34 * dpr, Rm = 34 * dpr, T = 10 * dpr, B = 20 * dpr;
+  const X = r => L + (r - r0) / (r1 - r0) * (w - L - Rm), Yc = v => h - B - v / maxCv * (h - B - T), Yn = v => h - B - v / maxNm * (h - B - T);
+  ctx.font = `${10 * dpr}px Roboto, sans-serif`; ctx.lineWidth = dpr;
+  for (let r = 1000; r <= r1; r += 1000) { ctx.strokeStyle = "#1e1e1e"; ctx.beginPath(); ctx.moveTo(X(r), T); ctx.lineTo(X(r), h - B); ctx.stroke(); ctx.fillStyle = "#777"; ctx.textAlign = "center"; ctx.fillText(r / 1000 + "k", X(r), h - 6 * dpr); }
+  for (let i = 1; i <= 4; i++) {
+    const y = h - B - i / 4 * (h - B - T);
+    ctx.strokeStyle = "#1e1e1e"; ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(w - Rm, y); ctx.stroke();
+    ctx.fillStyle = "#ff4a3d"; ctx.textAlign = "right"; ctx.fillText(Math.round(maxCv * i / 4), L - 4 * dpr, y + 4 * dpr);
+    ctx.fillStyle = "#4fc3f7"; ctx.textAlign = "left"; ctx.fillText(Math.round(maxNm * i / 4), w - Rm + 4 * dpr, y + 4 * dpr);
+  }
+  ctx.fillStyle = "#ff4a3d"; ctx.textAlign = "left"; ctx.fillText("CV", L + 4 * dpr, T + 10 * dpr);
+  ctx.fillStyle = "#4fc3f7"; ctx.textAlign = "right"; ctx.fillText("Nm", w - Rm - 4 * dpr, T + 10 * dpr);
+  runs.forEach(run => {
+    const dash = run === last ? [] : [6 * dpr, 5 * dpr];
+    [[1, Yc, "#ff4a3d"], [2, Yn, "#4fc3f7"]].forEach(([i, Y, col]) => {
+      ctx.setLineDash(dash); ctx.strokeStyle = col; ctx.lineWidth = (run === last ? 2.2 : 1.4) * dpr; ctx.beginPath();
+      run.curve.forEach((p, j) => j ? ctx.lineTo(X(p[0]), Y(p[i])) : ctx.moveTo(X(p[0]), Y(p[i])));
+      ctx.stroke();
+    });
+  });
+  ctx.setLineDash([]);
+  if (!runs.length) { ctx.fillStyle = "#666"; ctx.textAlign = "center"; ctx.fillText("Aquí aparecerá la curva de potencia y par", w / 2, h / 2); }
+}
+$("dynoBtn").onclick = () => { openOv("dynoOv"); requestAnimationFrame(dynoUI); };
+$("dynoArm").onclick = () => {
+  if (dyno.state === "armed" || dyno.state === "run") dyno.state = "off";
+  else Object.assign(dyno, { state: "armed", samples: [] });
+  dynoUI();
+};
+$("dynoClose").onclick = closeOv;
+setInterval(() => { if (dyno.state === "run" || dyno.state === "armed") dynoUI(); }, 500);
+
+/* ---------- Velocidad real por GPS ---------- */
+let gpsW = null;
+const gps = { v: null, n: 0, sum: 0, prevCar: null };
+function gpsUI(msg) {
+  const car = V.spd;
+  $("gpsV").textContent = gps.v != null ? gps.v.toFixed(0) : "-";
+  $("carV").textContent = car != null ? Math.round(car) : "-";
+  $("gpsD").textContent = gps.v > 5 && car > 5 ? ((car / gps.v - 1) * 100).toFixed(1) + " %" : "-";
+  const avg = gps.n ? gps.sum / gps.n : null;
+  $("gpsAvg").textContent = avg ? ((1 / avg - 1) * 100).toFixed(1) + " %" : "-";
+  $("gpsN").textContent = `media · ${gps.n} muestras`;
+  $("gpsStart").textContent = gpsW != null ? "Parar" : "Empezar";
+  if (msg) $("gpsMsg").textContent = msg;
+  else if (gpsW != null) $("gpsMsg").textContent = gps.n < 20 ? "Comparando… sigue a velocidad constante por encima de 30 km/h." : `Tu velocímetro marca un ${((1 / avg - 1) * 100).toFixed(1)} % ${avg < 1 ? "de más" : "de menos"}. Corrección actual: ${cfg.spdCorr.toFixed(3)}.`;
+}
+function gpsStop() { if (gpsW != null) navigator.geolocation.clearWatch(gpsW); gpsW = null; }
+$("gpsBtn").onclick = () => { openOv("gpsOv"); gpsUI(); };
+$("gpsStart").onclick = () => {
+  if (gpsW != null) { gpsStop(); gpsUI("Parado."); return; }
+  if (!navigator.geolocation) { gpsUI("Este navegador no da la ubicación."); return; }
+  Object.assign(gps, { n: 0, sum: 0, prevCar: null });
+  gpsW = navigator.geolocation.watchPosition(p => {
+    const s = p.coords.speed; if (s == null) return;
+    gps.v = s * 3.6;
+    const car = V.spd;
+    if (car != null && gps.v > 30 && car > 30 && p.coords.accuracy < 20 && gps.prevCar != null && Math.abs(car - gps.prevCar) < 3) { gps.n++; gps.sum += gps.v / car; }
+    gps.prevCar = car; gpsUI();
+  }, err => { gpsStop(); gpsUI(err.code === 1 ? "Sin permiso de ubicación. Actívalo para esta página en los ajustes de Chrome." : "No hay señal GPS."); },
+  { enableHighAccuracy: true, maximumAge: 0 });
+  gpsUI("Esperando señal GPS…");
+};
+$("gpsApply").onclick = () => {
+  if (gps.n < 20) { gpsUI("Hacen falta al menos 20 muestras para aplicar la corrección."); return; }
+  cfg.spdCorr = +(gps.sum / gps.n).toFixed(3); saveCfg();
+  gpsUI(`Corrección aplicada: ${cfg.spdCorr.toFixed(3)}. Puedes cambiarla o quitarla (poner 1) en Ajustes.`);
+};
+$("gpsClose").onclick = () => { gpsStop(); closeOv(); };
 
 /* ---------- Actualización automática (solo en GitHub Pages) ---------- */
 /* Mira si en GitHub hay una versión distinta y recarga. Nunca recarga con el coche conectado, grabando o cronometrando. */
