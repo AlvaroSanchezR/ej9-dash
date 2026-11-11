@@ -270,7 +270,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 
 <div class="overlay" id="cfgOv" hidden>
   <div class="sheet">
-    <h2>AJUSTES</h2>
+    <h2>AJUSTES <span id="appVer"></span></h2>
     <div class="cfg"><label for="cfgName">Nombre del coche</label><input id="cfgName" type="text" maxlength="18"></div>
     <div class="cfg"><label for="cfgCc">Cilindrada (cc)</label><input id="cfgCc" type="number" step="1"></div>
     <div class="cfg"><label for="cfgRed">Inicio zona roja (rpm)</label><input id="cfgRed" type="number" step="100"></div>
@@ -309,6 +309,8 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
+const APP_VERSION = "v1.3 · 11/11/2026 15:12"; // se cambia con cada actualización
+$("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "iat", "tps", "mapm"];
 const DEF_CELLS = ["volt", "adv", "fuel", "stft", "o2", "ltft"];
