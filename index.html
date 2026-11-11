@@ -317,7 +317,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v1.5 · 11/11/2026 16:02"; // se cambia con cada actualización
+const APP_VERSION = "v1.6 · 11/11/2026 16:10"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "iat", "tps", "mapm"];
@@ -851,7 +851,7 @@ async function initElm() {
 }
 function onDisconnect() { if (connected) { log("Adaptador desconectado"); toast("Se ha perdido la conexión con el adaptador", "crit"); } cleanup(); }
 function cleanup() {
-  if (connected) { saveOdo(); saveTank(); sendOdo(); }
+  if (connected) { saveOdo(); saveTank(); sendOdo(); if (newVer) setTimeout(applyUpdate, 2000); }
   running = false; connected = false; rx = tx = null; writeFn = null; pending = null;
   if (demoT) status("Demo", "demo"); else status("Desconectado", "");
   $("connBtn").textContent = "Conectar OBD"; $("connBle").hidden = false;
@@ -1401,6 +1401,30 @@ async function toggleFull() {
 }
 document.addEventListener("fullscreenchange", () => { $("fullBtn").textContent = document.fullscreenElement ? "Salir de pantalla completa" : "Pantalla completa"; });
 $("fullBtn").onclick = () => { closeOv(); toggleFull(); };
+
+/* ---------- Actualización automática (solo en GitHub Pages) ---------- */
+/* Mira si en GitHub hay una versión distinta y recarga. Nunca recarga con el coche conectado, grabando o cronometrando. */
+let newVer = null, updToast = false;
+async function checkUpdate() {
+  if (!/github\.io$/.test(location.hostname) || document.visibilityState !== "visible") return;
+  try {
+    const r = await fetch(location.pathname.replace(/[^/]*$/, "") + "index.html?nc=" + Date.now(), { cache: "no-store" });
+    const m = (await r.text()).match(/APP_VERSION = "([^"]+)"/);
+    if (m && m[1] !== APP_VERSION) { newVer = m[1]; applyUpdate(); }
+  } catch (e) {}
+}
+function applyUpdate() {
+  if (!newVer) return;
+  if (connected || connecting || rec || perf.state === "run" || perf.state === "ready") {
+    if (!updToast) { updToast = true; toast(`Hay una versión nueva (${newVer.split(" ")[0]}). Se instalará al desconectar.`, "ok"); }
+    return;
+  }
+  saveTank(); saveOdo();
+  location.replace(location.pathname + "?v=" + Date.now().toString(36));
+}
+setTimeout(checkUpdate, 3000);
+setInterval(checkUpdate, 5 * 60000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkUpdate(); });
 
 buildCells();
 applyNight();
