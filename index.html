@@ -407,6 +407,7 @@ function build() {
 
   // Arcos laterales (tocar un arco para cambiar el dato)
   R.arcs = [];
+  const arcTexts = [];
   ARC_SLOTS.forEach((slot, i) => {
     const k = cfg.arcs[i], g = SENSORS[k];
     const a = { ...slot, ...g };
@@ -422,7 +423,7 @@ function build() {
     // Valor y nombre dentro del arco
     const mid = (a.a0 + a.a1) / 2, [vx, vy] = P(186, mid);
     const val = el("text", { x: vx, y: vy + (a.top ? 2 : 10), class: "dig", "font-size": 22 }, "-");
-    el("text", { x: vx, y: vy + (a.top ? 18 : -12), class: "lbl dim", "text-anchor": "middle", "font-size": 9 }, a.s);
+    arcTexts.push(val, el("text", { x: vx + (a.side < 0 ? 8 : -8), y: vy + (a.top ? 18 : -12), class: "lbl dim", "text-anchor": a.side < 0 ? "end" : "start", "font-size": 9 }, a.s));
     el("path", { d: arc(R_ARC - 10, a.a0, a.a1), class: "hit" }).addEventListener("click", () => openPicker("arc", i));
     R.arcs.push({ fil, val, a, k });
   });
@@ -433,6 +434,7 @@ function build() {
   el("path", { d: sector(R_IN + 14, R_FACE, rpmAngle(cfg.red), A_START + A_SPAN), fill: "url(#rz)" });
   el("circle", { cx: CX, cy: CY, r: R_IN, fill: "var(--bg)" });
   el("circle", { cx: CX, cy: CY, r: R_IN, fill: "none", stroke: "#555", "stroke-width": 2 });
+  arcTexts.forEach(t => svg.appendChild(t)); // nombres y valores de los arcos por encima de la esfera
 
   const nums = [];
   for (let v = 0; v <= MAXRPM; v += 100) {
