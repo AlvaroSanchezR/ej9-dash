@@ -1,0 +1,1357 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EJ9 Dash</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Roboto:wght@500;700;900&display=swap">
+<style>
+/* Layout: estilo HonDash — reloj central de esfera blanca con cuatro arcos, columnas de gráficas de historial a los lados, menú flotante */
+:root{
+  --bg:#000; --fg:#f4f4f4; --dim:#9a9a9a; --line:#2c2c2c; --face:#f2f2f2; --ink:#111;
+  --red:#e3170a; --amber:#ffb020; --track:#262626;
+  --ui:"Roboto",system-ui,sans-serif; --brand:"Rajdhani",system-ui,sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);margin:0;
+  padding-left:max(4px,env(safe-area-inset-left,0px));padding-right:max(4px,env(safe-area-inset-right,0px));
+  padding-block:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;overflow-x:hidden}
+.app{height:100%;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:6px;position:relative}
+.center{height:100%;display:flex;align-items:center;justify-content:center;min-width:0}
+.center svg{height:100%;max-height:100%;width:auto;max-width:100%;display:block;aspect-ratio:520/440}
+.col{display:flex;flex-direction:column;gap:2px;min-width:0;padding-block:4px}
+.cell{flex:1;position:relative;min-height:0;overflow:hidden}
+.cell canvas{position:absolute;left:0;right:0;bottom:0;width:100%;height:72%;display:block}
+.cell .hd{position:relative;z-index:1;font-size:clamp(9px,1.5vw,12px);font-weight:500;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cell .mx{position:relative;z-index:1;font-size:clamp(7px,1.1vw,9px);color:var(--dim)}
+.cell .v{position:relative;z-index:1;font-weight:700;font-size:clamp(14px,3vw,22px);margin-top:2px;padding-left:18%;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px #000}
+.cell .mn{position:absolute;z-index:1;bottom:0;left:0;font-size:clamp(7px,1.1vw,9px);color:var(--dim)}
+.colR .cell .hd,.colR .cell .mx{text-align:right}
+.colR .cell .mn{left:auto;right:0}
+.cell.warn .v{color:var(--amber)} .cell.crit .v{color:var(--red)}
+
+@media (orientation:portrait){
+  html,body{height:auto}
+  .app{height:auto;grid-template-columns:1fr 1fr;padding-block:64px 16px}
+  .center{grid-column:1/-1;order:-1;height:auto}
+  .center svg{width:100%;height:auto}
+  .cell{min-height:96px;flex:none}
+}
+
+.menu{position:fixed;z-index:20;top:calc(8px + env(safe-area-inset-top,0px));left:calc(8px + env(safe-area-inset-left,0px));
+  width:48px;height:48px;border-radius:50%;border:0;background:rgba(38,38,38,.85);box-shadow:0 0 24px 4px rgba(227,23,10,.3);
+  display:grid;place-items:center;cursor:pointer;padding:0;opacity:.75}
+.menu i{display:block;width:20px;height:3px;background:var(--fg);border-radius:2px;box-shadow:0 7px 0 var(--fg),0 -7px 0 var(--fg)}
+.menu:focus-visible,button:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+
+.overlay{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.72);display:grid;place-items:center;
+  padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet{width:min(440px,100%);max-height:100%;overflow:auto;background:#121212;border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
+.sheet h2{margin:0;font-size:17px;letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center}
+.sheet h2 span{font-size:13px;color:var(--dim);letter-spacing:0;font-weight:500}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button.b{font-family:var(--ui);font-weight:700;font-size:15px;color:var(--fg);background:#1e1e1e;border:1px solid var(--line);border-radius:8px;padding:12px;cursor:pointer}
+button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
+.cfg{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px}
+.sub{margin:8px 0 0;font-size:13px;letter-spacing:.1em;color:var(--red);border-top:1px solid var(--line);padding-top:12px}
+.cfg input[type=text]{width:150px}
+.cfg input{width:96px;background:#000;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px;font-family:var(--ui);font-size:14px}
+.log{font-family:ui-monospace,monospace;font-size:11px;color:var(--dim);background:#000;border-radius:6px;padding:8px;max-height:130px;overflow:auto;white-space:pre-wrap;word-break:break-all;user-select:text}
+.note{font-size:13px;color:var(--dim);line-height:1.45;margin:0}
+.dtc{font-weight:700;font-size:18px;margin:0;padding-left:20px}
+.confirm{display:flex;gap:8px}
+.confirm button{flex:1}
+
+/* SVG */
+.tick{stroke:var(--ink)} .tick.rz{stroke:#fff}
+.num{font-family:var(--ui);font-weight:900;fill:var(--ink);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke-width:7px;stroke-linejoin:round}
+.lbl{font-family:var(--ui);fill:var(--fg);font-weight:500}
+.lbl.dim{fill:var(--dim)}
+.dig{font-family:var(--ui);font-weight:700;fill:var(--fg);text-anchor:middle}
+.vtec{font-family:var(--ui);font-weight:900;font-style:italic;font-size:15px;letter-spacing:1px;fill:#2a2a2a;text-anchor:middle}
+.vtec.on{fill:var(--red)}
+.trk{fill:none;stroke:var(--track);stroke-width:13}
+.fil{fill:none;stroke:var(--fg);stroke-width:13}
+.fil.warn{stroke:var(--amber)} .fil.crit{stroke:var(--red)}
+.cap{fill:none;stroke:var(--red);stroke-width:13}
+.box{fill:none;stroke:#cfcfcf;stroke-width:3}
+.gtxt{font-family:var(--ui);font-weight:700;fill:var(--fg);text-anchor:middle;dominant-baseline:central;font-size:36px}
+.brand{font-family:var(--brand);font-weight:600;font-size:22px;fill:#8a8a8a;text-anchor:middle;letter-spacing:1px}
+.hit{fill:none;stroke:transparent;stroke-width:46;cursor:pointer}
+.cell{cursor:pointer}
+
+/* Pantalla calle */
+.street{height:100%;display:flex;flex-direction:column;gap:2vh;padding-block:calc(10px + 1vh) calc(22px + 1vh);box-sizing:border-box}
+.sbar{display:flex;gap:3px;height:8vh;min-height:22px;margin-left:58px}
+.sbar i{flex:1;background:#1c1c1c;border-radius:2px}
+.sbar i.on{background:var(--fg)} .sbar i.on.hi{background:var(--amber)} .sbar i.on.rd{background:var(--red)}
+.smain{flex:1;display:grid;grid-template-columns:1fr 2fr 1fr;align-items:center;gap:12px;min-height:0}
+.sgear{justify-self:center;text-align:center}
+.sgear div{font-weight:900;font-size:min(28vh,18vw);line-height:1.05;border:4px solid #cfcfcf;border-radius:8px;padding:0 .14em;min-width:.75em}
+.street span{display:block;color:var(--dim);font-size:clamp(11px,2.4vh,16px);letter-spacing:.12em;text-transform:uppercase;margin-top:6px}
+.sspd{text-align:center} .sspd div{font-weight:900;font-size:min(46vh,26vw);line-height:.9;font-variant-numeric:tabular-nums}
+.sside{display:flex;flex-direction:column;gap:3vh;min-width:0}
+.sside b{font-size:min(10vh,6.5vw);font-variant-numeric:tabular-nums}
+.sside .warn b{color:var(--amber)} .sside .crit b{color:var(--red)}
+
+/* Pantalla taller */
+.shop{height:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:8px 10px;padding-block:6px 22px;box-sizing:border-box}
+.shop .cell{border-bottom:1px solid var(--line)}
+.shop .cell .v{font-size:clamp(16px,3.6vw,30px)}
+@media (orientation:portrait){
+  .shop{height:auto;grid-template-columns:1fr 1fr;grid-template-rows:none;grid-auto-rows:110px;padding-block:64px 30px}
+  .street{height:auto;min-height:100%;padding-block:70px 30px}
+  .smain{grid-template-columns:1fr 1fr}
+  .sspd{grid-column:1/-1;order:-1}
+}
+
+.dots{position:fixed;z-index:15;left:50%;transform:translateX(-50%);bottom:calc(4px + env(safe-area-inset-bottom,0px));display:flex;gap:4px;opacity:0;transition:opacity .4s}
+.dots.show{opacity:1}
+#colL .cell:first-child,.shop .cell:first-child{padding-left:56px}
+.dots button{width:22px;height:18px;border:0;background:none;padding:0;display:grid;place-items:center;cursor:pointer}
+.dots button::after{content:"";width:8px;height:8px;border-radius:50%;background:#444}
+.dots button.on::after{background:var(--red)}
+
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pick button{font-family:var(--ui);font-size:14px;font-weight:500;text-align:left;color:var(--fg);background:#1a1a1a;border:1px solid var(--line);border-radius:6px;padding:10px;cursor:pointer}
+.pick button.cur{border-color:var(--red);color:#fff}
+
+/* Avisos, grabación y cronómetro */
+.toast{position:fixed;z-index:40;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);max-width:calc(100% - 140px);
+  background:#1a1a1a;border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:8px;padding:10px 14px;font-size:15px;font-weight:700;box-shadow:0 6px 24px rgba(0,0,0,.6)}
+.toast.crit{border-left-color:var(--red)} .toast.ok{border-left-color:#3ddc84}
+.rec{position:fixed;z-index:16;top:calc(10px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px));
+  background:rgba(0,0,0,.7);border:1px solid var(--red);color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;cursor:pointer}
+.rec::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin-right:6px;animation:recb 1s steps(2) infinite}
+@keyframes recb{50%{opacity:.2}}
+@media (prefers-reduced-motion:reduce){.rec::before{animation:none}}
+.sheet.wide{width:min(760px,100%)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font-family:var(--ui);font-size:12px;font-weight:700;border-radius:14px;padding:6px 10px;background:#1a1a1a;color:var(--dim);border:1px solid var(--line);cursor:pointer}
+.chips button.on{color:#000;border-color:transparent}
+.logc{width:100%;height:220px;display:block;background:#000;border:1px solid var(--line);border-radius:6px;touch-action:none}
+.readout{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;min-height:2.6em;line-height:1.3}
+.dtc li{margin-bottom:6px}
+.dtc li small{display:block;font-weight:500;font-size:13px;color:var(--dim)}
+.perf{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.perf div{background:#000;border:1px solid var(--line);border-radius:8px;padding:10px;text-align:center}
+.perf b{display:block;font-size:30px;font-variant-numeric:tabular-nums}
+.perf span{font-size:12px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+.perfState{font-size:16px;font-weight:700;text-align:center;padding:6px}
+.chk{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px}
+.chk input{width:22px;height:22px;accent-color:var(--red)}
+
+/* Modo noche */
+.night{--fg:#c4c4c4;--ink:#dcdcdc;--dim:#6f6f6f}
+.night canvas{opacity:.65}
+.night .sgear div{border-color:#777}
+.night .menu{box-shadow:none}
+</style>
+
+<div class="app" id="app">
+  <aside class="col colL" id="colL"></aside>
+  <div class="center"><svg id="dash" viewBox="0 0 520 440" aria-label="Cuadro de instrumentos"></svg></div>
+  <aside class="col colR" id="colR"></aside>
+</div>
+
+<div class="street" id="street" hidden>
+  <div class="sbar" id="sbar"></div>
+  <div class="smain">
+    <div class="sgear"><div id="sGear">N</div><span>Marcha</span></div>
+    <div class="sspd"><div id="sSpd">0</div><span>km/h</span></div>
+    <div class="sside">
+      <div><b id="sRpm">0</b><span>rpm</span></div>
+      <div id="sWaterBox"><b id="sWater">-</b><span>agua °C</span></div>
+      <div><b id="sFuel">-</b><span id="sFuelU">L/100 km</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="shop" id="shop" hidden></div>
+
+<nav class="dots" id="dots" aria-label="Pantallas">
+  <button data-v="street" aria-label="Pantalla calle"></button>
+  <button data-v="full" aria-label="Pantalla completa"></button>
+  <button data-v="shop" aria-label="Pantalla taller"></button>
+</nav>
+
+<button class="menu" id="menuBtn" aria-label="Menú"><i></i></button>
+
+<div class="toast" id="toast" hidden></div>
+<div class="rec" id="recBadge" hidden>REC 0:00</div>
+
+<div class="overlay" id="logOv" hidden>
+  <div class="sheet wide">
+    <h2>GRABACIÓN <span id="logInfo"></span></h2>
+    <div class="chips" id="logChips"></div>
+    <canvas class="logc" id="logCv"></canvas>
+    <div class="readout" id="logRead">Toca o arrastra sobre la gráfica para ver los valores en ese momento.</div>
+    <div class="btns">
+      <button class="b pri" id="logCsv">Exportar CSV</button>
+      <button class="b" id="closeLog">Cerrar</button>
+    </div>
+    <p class="note" id="logNote">El CSV se abre con Excel o Google Sheets. Desde la vista previa de Claude no se puede descargar; sí desde la app abierta en Chrome.</p>
+  </div>
+</div>
+
+<div class="overlay" id="perfOv" hidden>
+  <div class="sheet">
+    <h2>CRONÓMETRO</h2>
+    <div class="perfState" id="perfState">Pulsa Preparar.</div>
+    <div class="perf">
+      <div><b id="pT">0.00</b><span>tiempo s</span></div>
+      <div><b id="pV">0</b><span>km/h</span></div>
+      <div><b id="p100">-</b><span>0–100 km/h</span></div>
+      <div><b id="p400">-</b><span>400 m</span></div>
+    </div>
+    <p class="note" id="perfBest"></p>
+    <div class="btns">
+      <button class="b pri" id="perfArm">Preparar</button>
+      <button class="b" id="perfClear">Borrar récords</button>
+    </div>
+    <p class="note">Con el coche parado, pulsa Preparar y sal cuando quieras: arranca solo y para al llegar a 100 km/h y a los 400 m. La velocidad por OBD llega pocas veces por segundo, así que los tiempos son orientativos (±0,2 s). Úsalo solo en circuito o lugar cerrado.</p>
+    <button class="b" id="closePerf">Cerrar</button>
+  </div>
+</div>
+
+<div class="overlay" id="pickOv" hidden>
+  <div class="sheet">
+    <h2 id="pickTitle">ELEGIR DATO</h2>
+    <div class="pick" id="pickList"></div>
+    <div class="btns">
+      <button class="b" id="pickReset">Todos de serie</button>
+      <button class="b" id="closePick">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="menuOv" hidden>
+  <div class="sheet">
+    <h2>MENÚ <span id="stat">Desconectado</span></h2>
+    <div class="btns">
+      <button class="b pri" id="connBtn">Conectar OBD</button>
+      <button class="b" id="demoBtn">Demo</button>
+      <button class="b" id="dtcBtn">Averías</button>
+      <button class="b" id="cfgBtn">Ajustes</button>
+      <button class="b" id="tripBtn">Reiniciar viaje</button>
+      <button class="b" id="connBle">Conectar adaptador BLE</button>
+      <button class="b" id="nightBtn">Modo noche</button>
+      <button class="b" id="fullBtn">Pantalla completa</button>
+      <button class="b" id="recBtn">Grabar datos</button>
+      <button class="b" id="logBtn" hidden>Ver grabación</button>
+      <button class="b" id="perfBtn">Cronómetro 0–100</button>
+      <button class="b" id="closeMenu">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="dtcOv" hidden>
+  <div class="sheet">
+    <h2>CÓDIGOS DE AVERÍA</h2>
+    <ul class="dtc" id="dtcList"><li style="font-weight:500;font-size:14px">Pulsa Leer con el adaptador conectado.</li></ul>
+    <div class="confirm" id="clearBox" hidden>
+      <button class="b pri" id="clearYes">Sí, borrar códigos</button>
+      <button class="b" id="clearNo">Cancelar</button>
+    </div>
+    <div class="btns">
+      <button class="b" id="readDtc">Leer</button>
+      <button class="b" id="clearDtc">Borrar…</button>
+    </div>
+    <button class="b" id="closeDtc">Cerrar</button>
+  </div>
+</div>
+
+<div class="overlay" id="cfgOv" hidden>
+  <div class="sheet">
+    <h2>AJUSTES</h2>
+    <div class="cfg"><label for="cfgName">Nombre del coche</label><input id="cfgName" type="text" maxlength="18"></div>
+    <div class="cfg"><label for="cfgCc">Cilindrada (cc)</label><input id="cfgCc" type="number" step="1"></div>
+    <div class="cfg"><label for="cfgRed">Inicio zona roja (rpm)</label><input id="cfgRed" type="number" step="100"></div>
+    <div class="cfg"><label for="cfgShift">Luz de cambio (rpm)</label><input id="cfgShift" type="number" step="100"></div>
+    <div class="cfg"><label for="cfgVtec">VTEC (rpm, 0 = apagado)</label><input id="cfgVtec" type="number" step="100"></div>
+    <div class="cfg"><label for="cfgWater">Aviso agua (°C)</label><input id="cfgWater" type="number" step="1"></div>
+    <div class="cfg"><label for="cfgVolt">Aviso batería bajo (V)</label><input id="cfgVolt" type="number" step="0.1"></div>
+    <h3 class="sub">MARCHAS</h3>
+    <p class="note" id="gearInfo"></p>
+    <div class="btns">
+      <button class="b" id="learnBtn">Aprender marchas</button>
+      <button class="b" id="gearReset">Valores del EJ9</button>
+    </div>
+    <h3 class="sub">CONSUMO</h3>
+    <div class="cfg"><label for="cfgPrice">Precio gasolina (€/L)</label><input id="cfgPrice" type="number" step="0.01"></div>
+    <div class="cfg"><label for="cfgFcal">Factor de calibración</label><input id="cfgFcal" type="number" step="0.01"></div>
+    <p class="note" id="tankInfo"></p>
+    <div class="cfg"><label for="fillL">Litros que han entrado</label><input id="fillL" type="number" step="0.01" placeholder="vacío = inicio"></div>
+    <button class="b" id="fillBtn">Registrar depósito lleno</button>
+    <p class="note" id="fillMsg">Para calibrar: llena el depósito hasta arriba y pulsa Registrar sin poner litros. En el siguiente lleno escribe los litros que han entrado y pulsa Registrar; la app ajusta su factor sola.</p>
+    <h3 class="sub">AVISOS</h3>
+    <label class="chk" for="cfgSound">Avisos con sonido (agua, batería, averías nuevas)<input id="cfgSound" type="checkbox"></label>
+    <button class="b" id="testSound">Probar sonido</button>
+    <h3 class="sub">CONEXIÓN</h3>
+    <label class="chk" for="cfgAuto">Reconectar solo al abrir la app o si se corta<input id="cfgAuto" type="checkbox"></label>
+    <p class="note">Adaptador clásico (como el iLC V03H2): emparéjalo antes en los ajustes de Bluetooth del móvil (PIN 1234 o 0000) y pulsa Conectar OBD. Adaptador BLE: no lo emparejes y pulsa Conectar adaptador BLE. Hace falta Chrome reciente en Android y la página abierta por https.</p>
+    <div class="log" id="log"></div>
+    <button class="b" id="closeCfg">Cerrar</button>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+
+/* ---------- Ajustes ---------- */
+const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
+const DEF_ARCS = ["water", "iat", "tps", "mapm"];
+const DEF_CELLS = ["volt", "adv", "fuel", "stft", "o2", "ltft"];
+const SHOP = ["rpm", "spd", "water", "iat", "tps", "mapm", "adv", "fuel", "stft", "ltft", "o2", "volt"];
+const DEF = { red: 7000, shift: 6500, vtec: 0, water: 105, volt: 12.0, name: "Civic EJ9", cc: 1396, price: 1.55, fcal: 1.0, gears: GEARS_EJ9,
+  arcs: DEF_ARCS.slice(), cells: DEF_CELLS.slice(), view: "full", night: "auto", sound: true, autoConn: true, lastConn: "" };
+let cfg = { ...DEF };
+try { Object.assign(cfg, JSON.parse(localStorage.getItem("ej9cfg2") || "{}")); } catch (e) {}
+
+/* Catálogo de datos que se pueden poner en cualquier hueco */
+const SENSORS = {
+  water: { n: "Temp. agua",              s: "AGUA",       u: "°C",    min: -20, max: 120,  d: 0 },
+  iat:   { n: "Temp. admisión",          s: "ADMISIÓN",   u: "°C",    min: -20, max: 120,  d: 0 },
+  tps:   { n: "Acelerador",              s: "ACELERADOR", u: "%",     min: 0,   max: 100,  d: 0 },
+  mapm:  { n: "Presión colector",        s: "COLECTOR",   u: "mBar",  min: 0,   max: 1200, d: 0 },
+  load:  { n: "Carga motor",             s: "CARGA",      u: "%",     min: 0,   max: 100,  d: 0 },
+  volt:  { n: "Batería",                 s: "BATERÍA",    u: "V",     min: 8,   max: 16,   d: 2 },
+  adv:   { n: "Avance encendido",        s: "AVANCE",     u: "°",     min: -10, max: 45,   d: 1 },
+  stft:  { n: "Corrección corta (STFT)", s: "STFT",       u: "%",     min: -30, max: 30,   d: 1 },
+  ltft:  { n: "Corrección larga (LTFT)", s: "LTFT",       u: "%",     min: -30, max: 30,   d: 1 },
+  o2:    { n: "Sonda lambda (O2S1)",     s: "LAMBDA",     u: "V",     min: 0,   max: 1,    d: 2 },
+  fuel:  { n: "Consumo instantáneo",     s: "CONSUMO",    u: "L/100", min: 0,   max: 30,   d: 1 },
+  lh:    { n: "Consumo por hora",        s: "CONSUMO",    u: "L/h",   min: 0,   max: 20,   d: 1 },
+  rpm:   { n: "Revoluciones",            s: "RPM",        u: "rpm",   min: 0,   max: 8000, d: 0 },
+  spd:   { n: "Velocidad",               s: "VELOCIDAD",  u: "km/h",  min: 0,   max: 200,  d: 0 },
+  maf:   { n: "Caudal de aire (MAF)",    s: "MAF",        u: "g/s",   min: 0,   max: 100,  d: 1 },
+};
+const fixList = (arr, def) => def.map((k, i) => SENSORS[arr && arr[i]] ? arr[i] : k);
+cfg.arcs = fixList(cfg.arcs, DEF_ARCS); cfg.cells = fixList(cfg.cells, DEF_CELLS);
+const saveCfg = () => { try { localStorage.setItem("ej9cfg2", JSON.stringify(cfg)); } catch (e) {} };
+
+/* ---------- Geometría ---------- */
+const CX = 260, CY = 220, R_FACE = 165, R_IN = 112, A_START = 135, A_SPAN = 270, R_ARC = 212;
+let MAXRPM = 8000;
+const P = (r, a) => [CX + r * Math.cos(a * Math.PI / 180), CY + r * Math.sin(a * Math.PI / 180)];
+function arc(r, a1, a2) {
+  const [x1, y1] = P(r, a1), [x2, y2] = P(r, a2);
+  return `M${x1.toFixed(1)} ${y1.toFixed(1)}A${r} ${r} 0 ${Math.abs(a2 - a1) > 180 ? 1 : 0} ${a2 > a1 ? 1 : 0} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+}
+function sector(r0, r1, a1, a2) {
+  const [x1, y1] = P(r1, a1), [x2, y2] = P(r1, a2), [x3, y3] = P(r0, a2), [x4, y4] = P(r0, a1), l = a2 - a1 > 180 ? 1 : 0;
+  return `M${x1} ${y1}A${r1} ${r1} 0 ${l} 1 ${x2} ${y2}L${x3} ${y3}A${r0} ${r0} 0 ${l} 0 ${x4} ${y4}Z`;
+}
+function el(tag, attrs, parent, text) {
+  if (typeof parent === "string" || typeof parent === "number") { text = parent; parent = null; }
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  (parent || svg).appendChild(e); return e;
+}
+const rpmAngle = v => A_START + Math.min(Math.max(v, 0), MAXRPM) / MAXRPM * A_SPAN;
+
+/* Huecos de los arcos: a0 = mínimo, a1 = máximo. side: -1 izquierda, 1 derecha */
+const ARC_SLOTS = [
+  { a0: 192, a1: 252, side: -1, top: true },
+  { a0: 348, a1: 288, side: 1,  top: true },
+  { a0: 108, a1: 168, side: -1, top: false },
+  { a0: 72,  a1: 12,  side: 1,  top: false },
+];
+
+/* Celdas con gráfica: "m" = pantalla completa, "s" = pantalla taller */
+function cellHtml(prefix, i, k) {
+  const g = SENSORS[k];
+  return `<div class="cell" id="${prefix}c${i}" data-slot="${i}">
+      <div class="hd">${g.n} [${g.u}]</div>
+      <div class="mx">${g.max.toFixed(g.d)}</div>
+      <div class="v" id="${prefix}v${i}">-</div>
+      <canvas id="${prefix}cv${i}"></canvas>
+      <div class="mn">${g.min.toFixed(g.d)}</div>
+    </div>`;
+}
+function buildCells() {
+  $("colL").innerHTML = cfg.cells.slice(0, 3).map((k, i) => cellHtml("m", i, k)).join("");
+  $("colR").innerHTML = cfg.cells.slice(3, 6).map((k, i) => cellHtml("m", i + 3, k)).join("");
+  $("shop").innerHTML = SHOP.map((k, i) => cellHtml("s", i, k)).join("");
+}
+
+/* ---------- Construcción del reloj ---------- */
+const svg = $("dash");
+const R = {};
+let nightNow = false;
+function build() {
+  svg.innerHTML = "";
+  MAXRPM = Math.ceil((cfg.red + 600) / 1000) * 1000;
+  SENSORS.rpm.max = MAXRPM;
+  const N = nightNow;
+  const defs = el("defs", {});
+  const rg = el("radialGradient", { id: "halo" }, defs);
+  el("stop", { offset: "82%", "stop-color": "#fff", "stop-opacity": N ? ".08" : ".5" }, rg);
+  el("stop", { offset: "100%", "stop-color": "#fff", "stop-opacity": "0" }, rg);
+  const fg = el("radialGradient", { id: "face" }, defs);
+  el("stop", { offset: "70%", "stop-color": N ? "#1f1f1f" : "#c9c9c9" }, fg);
+  el("stop", { offset: "100%", "stop-color": N ? "#333" : "#f6f6f6" }, fg);
+  const lg = el("linearGradient", { id: "rz", x1: "0", y1: "0", x2: "1", y2: "0" }, defs);
+  el("stop", { offset: "0", "stop-color": "#e3170a", "stop-opacity": N ? ".2" : ".35" }, lg);
+  el("stop", { offset: "1", "stop-color": "#e3170a", "stop-opacity": N ? ".7" : "1" }, lg);
+
+  // Arcos laterales (tocar un arco para cambiar el dato)
+  R.arcs = [];
+  ARC_SLOTS.forEach((slot, i) => {
+    const k = cfg.arcs[i], g = SENSORS[k];
+    const a = { ...slot, ...g };
+    el("path", { d: arc(R_ARC, a.a0, a.a1), class: "trk" });
+    const fil = el("path", { d: "", class: "fil" });
+    const capA = a.a1 - Math.sign(a.a1 - a.a0) * 5;
+    el("path", { d: arc(R_ARC, capA, a.a1), class: "cap" });
+    // Etiquetas de máximo y mínimo junto a los extremos
+    const [mxX, mxY] = P(R_ARC, a.a1), [mnX, mnY] = P(R_ARC, a.a0);
+    const anc = a.side < 0 ? "start" : "end", dx = a.side < 0 ? 12 : -12;
+    el("text", { x: mxX + dx, y: mxY + 6, class: "lbl", "text-anchor": anc, "font-size": 15 }, a.max + (a.top ? " " + a.u : ""));
+    el("text", { x: mnX + dx, y: mnY + 6, class: "lbl", "text-anchor": anc, "font-size": 15 }, a.min + (a.top ? "" : " " + a.u));
+    // Valor y nombre dentro del arco
+    const mid = (a.a0 + a.a1) / 2, [vx, vy] = P(186, mid);
+    const val = el("text", { x: vx, y: vy + (a.top ? 2 : 10), class: "dig", "font-size": 22 }, "-");
+    el("text", { x: vx, y: vy + (a.top ? 18 : -12), class: "lbl dim", "text-anchor": "middle", "font-size": 9 }, a.s);
+    el("path", { d: arc(R_ARC - 10, a.a0, a.a1), class: "hit" }).addEventListener("click", () => openPicker("arc", i));
+    R.arcs.push({ fil, val, a, k });
+  });
+
+  // Esfera
+  el("circle", { cx: CX, cy: CY, r: R_FACE + 12, fill: "url(#halo)" });
+  el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#face)" });
+  el("path", { d: sector(R_IN + 14, R_FACE, rpmAngle(cfg.red), A_START + A_SPAN), fill: "url(#rz)" });
+  el("circle", { cx: CX, cy: CY, r: R_IN, fill: "var(--bg)" });
+  el("circle", { cx: CX, cy: CY, r: R_IN, fill: "none", stroke: "#555", "stroke-width": 2 });
+
+  const nums = [];
+  for (let v = 0; v <= MAXRPM; v += 100) {
+    const a = rpmAngle(v), major = v % 1000 === 0, half = v % 500 === 0;
+    const r0 = major ? R_FACE - 24 : half ? R_FACE - 16 : R_FACE - 10;
+    const [x1, y1] = P(r0, a), [x2, y2] = P(R_FACE - 2, a);
+    el("line", { x1, y1, x2, y2, class: "tick" + (v > cfg.red ? " rz" : ""), "stroke-width": major ? 4 : half ? 2.5 : 1.5 });
+    if (major) { const [tx, ty] = P(R_FACE - 42, a); nums.push(el("text", { x: tx, y: ty, class: "num", "font-size": 30, stroke: v > cfg.red ? (N ? "#5e110b" : "#e3170a") : (N ? "#262626" : "#d4d4d4") }, v / 1000)); }
+  }
+  el("text", { x: CX, y: CY + 146, class: "brand" }, cfg.name || "");
+
+  // Lecturas centrales
+  R.vtec = el("text", { x: CX, y: 128, class: "vtec" }, "VTEC");
+  R.rpm = el("text", { x: CX, y: 155, class: "dig", "font-size": 28 }, "0");
+  el("text", { x: CX, y: 167, class: "lbl", "text-anchor": "middle", "font-size": 10 }, "rpm");
+  R.spd = el("text", { x: CX, y: 222, class: "dig", "font-size": 62 }, "0");
+  el("text", { x: CX, y: 236, class: "lbl", "text-anchor": "middle", "font-size": 10 }, "km/h");
+  el("line", { x1: CX - 80, y1: 242, x2: CX + 80, y2: 242, stroke: "#e6e6e6", "stroke-width": 1.5 });
+  R.trip = {};
+  [["dist", "Viaje"], ["dur", "Duración"], ["vavg", "Vel. media"], ["cons", "Consumo medio"], ["lit", "Gastado"], ["cost", "Coste"]].forEach(([k, n], i) => {
+    const y = 255 + i * 12;
+    el("text", { x: CX - 4, y, class: "lbl", "text-anchor": "end", "font-size": 10 }, n);
+    R.trip[k] = el("text", { x: CX + 4, y, class: "lbl", "font-size": 10, "font-weight": 700 }, "-");
+  });
+
+  // Aguja
+  R.needle = el("g", {});
+  el("polygon", { points: `${CX + R_IN + 2},${CY - 3} ${CX + R_FACE - 4},${CY - 1} ${CX + R_FACE - 4},${CY + 1} ${CX + R_IN + 2},${CY + 3}`, fill: "var(--red)" }, R.needle);
+  nums.forEach(n => svg.appendChild(n)); // los números por encima de la aguja
+
+  // Marcha y testigo de motor/OBD
+  R.gearBox = el("rect", { x: 8, y: 194, width: 44, height: 52, rx: 3, class: "box" });
+  if (learning) R.gearBox.style.stroke = "var(--amber)";
+  R.gear = el("text", { x: 30, y: 221, class: "gtxt" }, "N");
+  R.eng = el("g", { transform: "translate(472 204)" });
+  el("path", { d: "M6 10h6V6h12v4h6l4 4h4v-4h4v18h-4v-4h-4v6H14l-4-4H6v-6H2v-6h4z", fill: "#3a3a3a" }, R.eng);
+  R.obdTxt = el("text", { x: 492, y: 252, class: "lbl dim", "text-anchor": "middle", "font-size": 10 }, "OFF");
+  render();
+}
+
+/* ---------- Datos y pintado ---------- */
+const V = {}, H = {};
+const MAXV = { rpm: 0 };
+const trip = { dist: 0, t0: 0, last: 0, vmax: 0, lraw: 0 };
+let dirty = false;
+const HLEN = 90;
+
+/* Depósito: km y litros estimados (sin calibrar) desde el último lleno; solo cuenta con el coche conectado */
+let tank = { started: false, km: 0, lraw: 0 };
+try { Object.assign(tank, JSON.parse(localStorage.getItem("ej9tank") || "{}")); } catch (e) {}
+const saveTank = () => { try { localStorage.setItem("ej9tank", JSON.stringify(tank)); } catch (e) {} };
+setInterval(() => { if (connected) saveTank(); }, 10000);
+
+/* Consumo estimado por densidad de aire (MAP + temperatura + rpm + cilindrada), o por caudalímetro si lo hay */
+const VE = 0.85, AFR = 14.7, DENS = 740; // llenado medio, mezcla estequiométrica, g/L de gasolina
+let fuelT = 0;
+function fuelLh() {
+  const rpm = V.rpm;
+  if (rpm == null || rpm < 300) return 0;
+  let maf;
+  if (V.maf != null) maf = V.maf;
+  else {
+    if (V.map == null) return null;
+    const T = (V.iat != null ? V.iat : 25) + 273.15;
+    maf = rpm / 120 * (cfg.cc / 1000) * VE * (V.map * 1000 / (287.05 * T)); // g/s de aire
+  }
+  if (V.tps != null && V.tps < 1.5 && rpm > 1500 && (V.spd || 0) > 10) return 0; // corte de inyección en retención
+  const afr = V.tps != null && V.tps > 75 ? 12.8 : AFR; // enriquecimiento a plena carga
+  const trim = 1 + ((V.stft || 0) + (V.ltft || 0)) / 100;
+  return maf / afr * trim * 3600 / DENS;
+}
+
+/* Aprendizaje de marchas: agrupa relaciones km/h por 1000 rpm estables */
+let learning = false, clusters = [], lastRatio = 0, stableN = 0;
+function learnSample(rpm) {
+  if (!learning || (V.spd || 0) < 12 || rpm < 1200 || (V.tps != null && V.tps < 3)) { stableN = 0; return; }
+  const r = V.spd / (rpm / 1000);
+  if (lastRatio && Math.abs(r - lastRatio) / r < 0.02) { if (++stableN >= 4) addCluster(r); } else stableN = 0;
+  lastRatio = r;
+}
+function addCluster(r) {
+  const c = clusters.find(c => Math.abs(c.r - r) / c.r < 0.05);
+  if (c) { c.r = (c.r * c.n + r) / (c.n + 1); c.n++; } else clusters.push({ r, n: 1 });
+  gearInfo();
+}
+function goodClusters() { return clusters.filter(c => c.n >= 10).map(c => c.r).sort((a, b) => a - b).slice(0, 6); }
+function gearInfo() {
+  const el2 = $("gearInfo"), btn = $("learnBtn");
+  if (learning) {
+    const n = goodClusters().length;
+    el2.textContent = `Aprendiendo… marchas detectadas: ${n}. Circula pasando por todas y mantén unos segundos cada una a velocidad constante.`;
+    btn.textContent = "Terminar y guardar";
+  } else {
+    el2.textContent = "Relaciones guardadas (km/h a 1000 rpm): " + cfg.gears.map((g, i) => `${i + 1}ª ${g.toFixed(1)}`).join(" · ");
+    btn.textContent = "Aprender marchas";
+  }
+}
+
+/* Aguja suave: la aguja persigue el último valor real repartiendo el movimiento entre lecturas */
+let dispRpm = 0, rpmDt = 150, lastRpmT = 0, lastFrame = 0, rpmSlope = 0, prevRpm = 0;
+function anim(t) {
+  const dt = lastFrame ? Math.min(100, t - lastFrame) : 16; lastFrame = t;
+  // Predicción: proyecta la última lectura con su ritmo de subida/bajada para compensar el retraso del OBD
+  const since = lastRpmT ? Math.min(t - lastRpmT, rpmDt * 1.2) : 0;
+  const target = V.rpm == null ? 0 : Math.max(0, Math.min(MAXRPM, V.rpm + rpmSlope * (since + rpmDt * 0.4)));
+  const tau = 30;
+  dispRpm += (target - dispRpm) * (1 - Math.exp(-dt / tau));
+  if (R.needle && cfg.view === "full") {
+    R.needle.setAttribute("transform", `rotate(${rpmAngle(dispRpm).toFixed(2)} ${CX} ${CY})`);
+    R.needle.firstChild.setAttribute("fill", dispRpm >= cfg.shift ? "#ff5a4d" : "var(--red)");
+    R.rpm.textContent = Math.round(dispRpm / 10) * 10;
+    R.vtec.classList.toggle("on", cfg.vtec > 0 && dispRpm >= cfg.vtec);
+  }
+  if (cfg.view === "street") {
+    const lit = Math.round(Math.min(dispRpm, MAXRPM) / MAXRPM * SEGS.length);
+    SEGS.forEach((s, i) => {
+      const r = (i + 1) / SEGS.length * MAXRPM;
+      s.className = i < lit ? "on" + (r > cfg.red ? " rd" : r > cfg.shift - 800 ? " hi" : "") : "";
+    });
+    $("sRpm").textContent = Math.round(dispRpm / 10) * 10;
+  }
+  requestAnimationFrame(anim);
+}
+requestAnimationFrame(anim);
+
+function setVal(k, v) {
+  V[k] = v;
+  if (k === "map") setVal("mapm", v == null ? null : v * 10);
+  if (SENSORS[k] && v != null) { (H[k] = H[k] || []).push(v); if (H[k].length > HLEN) H[k].shift(); }
+  const now = performance.now();
+  if (k === "spd" && v != null) {
+    if (!trip.t0) trip.t0 = now;
+    if (trip.last) {
+      const dk = v * Math.min(2000, now - trip.last) / 3600000;
+      trip.dist += dk;
+      if (connected && tank.started) tank.km += dk;
+    }
+    trip.last = now; trip.vmax = Math.max(trip.vmax, v);
+    perfSample(v, now);
+  }
+  if (k === "rpm" && v != null) {
+    MAXV.rpm = Math.max(MAXV.rpm, v);
+    if (lastRpmT) {
+      const d = Math.min(1000, now - lastRpmT);
+      rpmDt = rpmDt * 0.7 + d * 0.3;
+      rpmSlope = d > 0 ? Math.max(-8, Math.min(8, (v - prevRpm) / d)) : 0;
+    }
+    prevRpm = v; lastRpmT = now;
+    learnSample(v);
+    const lh = fuelLh();
+    if (lh != null) {
+      if (fuelT) {
+        const dl = lh * Math.min(2000, now - fuelT) / 3600000;
+        trip.lraw += dl;
+        if (connected && tank.started) tank.lraw += dl;
+      }
+      fuelT = now;
+      setVal("lh", lh * cfg.fcal);
+      setVal("fuel", (V.spd || 0) > 5 ? V.lh / V.spd * 100 : null);
+    }
+  }
+  if (!dirty) { dirty = true; requestAnimationFrame(render); }
+}
+function gearOf(rpm, spd) {
+  if (spd == null || rpm == null) return "-";
+  if (spd < 3) return "N";
+  const r = spd / (rpm / 1000);
+  let best = -1, err = 1;
+  cfg.gears.forEach((k, i) => { const e = Math.abs(r - k) / k; if (e < err) { err = e; best = i; } });
+  return err < 0.12 ? String(best + 1) : "-";
+}
+const fmtDur = ms => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
+
+function stateOf(k, v) {
+  if (v == null) return "";
+  if (k === "water") return v >= cfg.water ? "crit" : v >= cfg.water - 6 ? "warn" : "";
+  if (k === "iat") return v > 55 ? "warn" : "";
+  if (k === "volt") return v < cfg.volt ? "crit" : v > 14.8 ? "warn" : "";
+  if (k === "stft" || k === "ltft") return Math.abs(v) > 20 ? "crit" : Math.abs(v) > 10 ? "warn" : "";
+  if (k === "rpm") return v >= cfg.red ? "crit" : v >= cfg.shift ? "warn" : "";
+  return "";
+}
+function fmtVal(k, v) {
+  if (v != null) return v.toFixed(SENSORS[k].d);
+  if (k === "fuel" && V.lh != null) return V.lh.toFixed(1) + " L/h";
+  return "-";
+}
+function renderCells(prefix, keys) {
+  keys.forEach((k, i) => {
+    const v = V[k], c = $(prefix + "c" + i);
+    if (!c) return;
+    $(prefix + "v" + i).textContent = fmtVal(k, v);
+    c.className = "cell " + stateOf(k, v);
+    drawChart($(prefix + "cv" + i), k);
+  });
+}
+function drawChart(c, k) {
+  const g = SENSORS[k], dpr = window.devicePixelRatio || 1;
+  const w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
+  if (!w || !h) return;
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  const ctx = c.getContext("2d"), data = H[k] || [];
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = "#2c2c2c"; ctx.lineWidth = dpr;
+  ctx.beginPath(); ctx.moveTo(0, h - dpr / 2); ctx.lineTo(w, h - dpr / 2); ctx.stroke();
+  if (data.length < 2) return;
+  const y = v => h - Math.max(0, Math.min(1, (v - g.min) / (g.max - g.min))) * (h - 2 * dpr) - dpr;
+  const step = w / (HLEN - 1), x0 = w - (data.length - 1) * step;
+  ctx.beginPath(); ctx.moveTo(x0, h);
+  data.forEach((v, i) => ctx.lineTo(x0 + i * step, y(v)));
+  ctx.lineTo(w, h); ctx.closePath();
+  const gr = ctx.createLinearGradient(0, 0, 0, h);
+  gr.addColorStop(0, "rgba(200,20,10,.85)"); gr.addColorStop(1, "rgba(90,6,4,.55)");
+  ctx.fillStyle = gr; ctx.fill();
+  ctx.beginPath(); data.forEach((v, i) => i ? ctx.lineTo(x0 + i * step, y(v)) : ctx.moveTo(x0, y(v)));
+  ctx.strokeStyle = "#ff4a3d"; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
+}
+
+function render() {
+  dirty = false;
+  const gear = gearOf(V.rpm, V.spd);
+  R.spd.textContent = V.spd != null ? Math.round(V.spd) : "-";
+  R.gear.textContent = gear;
+
+  if (cfg.view === "full") {
+    for (const { fil, val, a, k } of R.arcs) {
+      const v = V[k];
+      if (v == null) { fil.setAttribute("d", ""); val.textContent = "-"; continue; }
+      const f = Math.max(0, Math.min(1, (v - a.min) / (a.max - a.min)));
+      fil.setAttribute("d", f > 0.005 ? arc(R_ARC, a.a0, a.a0 + f * (a.a1 - a.a0)) : "");
+      const st = stateOf(k, v);
+      fil.setAttribute("class", "fil " + st);
+      val.textContent = v.toFixed(a.d);
+      val.setAttribute("fill", st === "crit" ? "var(--red)" : st === "warn" ? "var(--amber)" : "var(--fg)");
+    }
+    renderCells("m", cfg.cells);
+  } else if (cfg.view === "shop") {
+    renderCells("s", SHOP);
+  } else {
+    $("sGear").textContent = gear;
+    $("sSpd").textContent = V.spd != null ? Math.round(V.spd) : "-";
+    $("sWater").textContent = fmtVal("water", V.water);
+    $("sWaterBox").className = stateOf("water", V.water);
+    const moving = V.fuel != null;
+    $("sFuel").textContent = moving ? V.fuel.toFixed(1) : (V.lh != null ? V.lh.toFixed(1) : "-");
+    $("sFuelU").textContent = moving ? "L/100 km" : "L/h";
+  }
+  const dur = trip.t0 ? (trip.last || performance.now()) - trip.t0 : 0;
+  const litres = trip.lraw * cfg.fcal;
+  R.trip.dist.textContent = trip.dist.toFixed(2) + " km";
+  R.trip.dur.textContent = fmtDur(dur);
+  R.trip.vavg.textContent = dur > 5000 ? (trip.dist / (dur / 3600000)).toFixed(1) + " km/h" : "-";
+  R.trip.cons.textContent = trip.dist > 0.2 ? (litres / trip.dist * 100).toFixed(1) + " L/100" : "-";
+  R.trip.lit.textContent = litres.toFixed(2) + " L";
+  R.trip.cost.textContent = (litres * cfg.price).toFixed(2) + " €";
+}
+function resetTrip() { trip.dist = 0; trip.t0 = 0; trip.last = 0; trip.vmax = 0; trip.lraw = 0; fuelT = 0; MAXV.rpm = 0; render(); }
+window.addEventListener("resize", () => { if (!dirty) { dirty = true; requestAnimationFrame(render); } });
+
+/* ---------- Log y estado ---------- */
+const logLines = [];
+function log(s) { logLines.push(s); if (logLines.length > 80) logLines.shift(); $("log").textContent = logLines.join("\n"); $("log").scrollTop = 1e9; }
+let mode = "";
+function status(txt, m) {
+  mode = m || ""; $("stat").textContent = txt;
+  if (R.eng) {
+    R.eng.firstChild.setAttribute("fill", mode === "on" ? "#3ddc84" : mode === "demo" ? "#ffb020" : "#3a3a3a");
+    R.obdTxt.textContent = mode === "on" ? "OBD" : mode === "demo" ? "DEMO" : "OFF";
+  }
+}
+
+/* ---------- ELM327 por Bluetooth LE ---------- */
+const SERVICES = [0xfff0, 0xffe0, 0x18f0, "e7810a71-73ae-499d-8c15-faa9aef0c3f2"];
+let dev = null, rx = null, tx = null, buf = "", pending = null, running = false, connected = false;
+const enc = new TextEncoder(), dec = new TextDecoder();
+
+let port = null, reader = null, writer = null, writeFn = null;
+const SPP = "00001101-0000-1000-8000-00805f9b34fb"; // perfil serie de Bluetooth clásico
+function onData(e) { onChunk(dec.decode(e.target.value)); }
+function onChunk(str) {
+  buf += str;
+  const i = buf.indexOf(">");
+  if (i >= 0 && pending) {
+    const out = buf.slice(0, i).replace(/\r/g, "\n").trim(); buf = buf.slice(i + 1);
+    const p = pending; pending = null; clearTimeout(p.t); p.res(out);
+  }
+}
+function send(cmd, ms = 2500) {
+  return new Promise((res, rej) => {
+    if (!writeFn) return rej(new Error("sin conexión"));
+    buf = "";
+    pending = { res, t: setTimeout(() => { pending = null; res("TIMEOUT"); }, ms) };
+    Promise.resolve(writeFn(enc.encode(cmd + "\r"))).catch(rej);
+  });
+}
+let connecting = false, userOff = false, via = "";
+async function connect(autoDev) {
+  if (!navigator.bluetooth) {
+    if (autoDev) return;
+    status("Sin Bluetooth web", ""); openCfg();
+    log("Este navegador no permite Bluetooth desde la web. Usa Chrome en Android y abre la página por https (por ejemplo GitHub Pages).");
+    return;
+  }
+  if (connecting) return;
+  connecting = true; via = "ble";
+  try {
+    if (!autoDev) status("Buscando…", "");
+    dev = autoDev || await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: SERVICES });
+    dev.removeEventListener("gattserverdisconnected", onDisconnect);
+    dev.addEventListener("gattserverdisconnected", onDisconnect);
+    log("Dispositivo: " + (dev.name || "sin nombre"));
+    const srv = await dev.gatt.connect();
+    let found = false;
+    for (const s of await srv.getPrimaryServices()) {
+      let chars; try { chars = await s.getCharacteristics(); } catch (e) { continue; }
+      const n = chars.find(c => c.properties.notify || c.properties.indicate);
+      const w = chars.find(c => c.properties.write || c.properties.writeWithoutResponse);
+      if (n && w) { rx = n; tx = w; found = true; log("Servicio " + s.uuid); break; }
+    }
+    if (!found) throw new Error("No encuentro el canal serie del adaptador");
+    await rx.startNotifications(); rx.addEventListener("characteristicvaluechanged", onData);
+    writeFn = d => tx.properties.writeWithoutResponse ? tx.writeValueWithoutResponse(d) : tx.writeValue(d);
+    await initElm();
+  } catch (e) { log((autoDev ? "Reconexión: " : "Error: ") + e.message); await disconnect(); if (!autoDev) status("Error", ""); }
+  finally { connecting = false; }
+}
+
+/* ---------- ELM327 por Bluetooth clásico (Web Serial, Chrome 137+ en Android) ---------- */
+async function connectSerial(autoPort) {
+  if (!navigator.serial) {
+    if (autoPort) return;
+    status("Sin Bluetooth clásico web", ""); openCfg();
+    log("Este navegador no permite Bluetooth clásico desde la web. Necesitas Chrome 137 o más nuevo en Android y abrir la página por https (por ejemplo GitHub Pages).");
+    return;
+  }
+  if (connecting) return;
+  connecting = true; via = "serial";
+  try {
+    if (!autoPort) status("Buscando…", "");
+    port = autoPort || await navigator.serial.requestPort({ allowedBluetoothServiceClassIds: [SPP], filters: [{ bluetoothServiceClassId: SPP }] });
+    await port.open({ baudRate: 38400 });
+    writer = port.writable.getWriter();
+    writeFn = d => writer.write(d);
+    readLoop(port);
+    log("Puerto Bluetooth clásico abierto");
+    await initElm();
+  } catch (e) { log((autoPort ? "Reconexión: " : "Error: ") + e.message); await disconnect(); if (!autoPort) status("Error", ""); }
+  finally { connecting = false; }
+}
+
+/* Reconexión automática con el último adaptador usado (sin volver a elegirlo) */
+async function tryAuto() {
+  if (connected || connecting || userOff || !cfg.autoConn || !cfg.lastConn || document.visibilityState !== "visible") return;
+  try {
+    if (cfg.lastConn === "serial" && navigator.serial) {
+      const ps = await navigator.serial.getPorts();
+      if (ps.length) await connectSerial(ps[0]);
+    } else if (cfg.lastConn === "ble" && navigator.bluetooth && navigator.bluetooth.getDevices) {
+      const ds = await navigator.bluetooth.getDevices();
+      if (ds.length) await connect(ds[0]);
+    }
+  } catch (e) {}
+}
+setInterval(tryAuto, 8000);
+async function readLoop(p) {
+  reader = p.readable.getReader();
+  try { for (;;) { const { value, done } = await reader.read(); if (done) break; if (value) onChunk(dec.decode(value)); } }
+  catch (e) { log("Lectura: " + e.message); }
+  finally { try { reader.releaseLock(); } catch (e) {} if (connected && port === p) { log("Adaptador desconectado"); toast("Se ha perdido la conexión con el adaptador", "crit"); disconnect(); } }
+}
+
+async function initElm() {
+  try {
+    status("Iniciando ELM…", "");
+    for (const c of ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATAT2", "ATSP0"]) log(c + " → " + (await send(c, 4000)).replace(/\n/g, " "));
+    const r = await send("0100", 12000); log("0100 → " + r.replace(/\n/g, " "));
+    if (!/4100/.test(r.replace(/\s/g, ""))) throw new Error("La centralita no responde. ¿Contacto puesto?");
+    log("Protocolo: " + (await send("ATDPN")));
+    stopDemo();
+    if (cfg.lastConn !== via) { cfg.lastConn = via; saveCfg(); }
+    connected = true; status("Conectado", "on"); $("connBtn").textContent = "Desconectar"; $("connBle").hidden = true;
+    dtcCount = null; toast("Conectado a la centralita", "ok");
+    for (const k in H) H[k] = [];
+    resetTrip(); closeOv(); loop();
+  } catch (e) { throw e; }
+}
+function onDisconnect() { if (connected) { log("Adaptador desconectado"); toast("Se ha perdido la conexión con el adaptador", "crit"); } cleanup(); }
+function cleanup() {
+  running = false; connected = false; rx = tx = null; writeFn = null; pending = null;
+  if (demoT) status("Demo", "demo"); else status("Desconectado", "");
+  $("connBtn").textContent = "Conectar OBD"; $("connBle").hidden = false;
+}
+async function disconnect() {
+  running = false;
+  try { dev && dev.gatt.connected && dev.gatt.disconnect(); } catch (e) {}
+  if (port) {
+    const p = port; port = null; writeFn = null;
+    try { reader && await reader.cancel(); } catch (e) {}
+    try { writer && writer.releaseLock(); } catch (e) {}
+    try { await p.close(); } catch (e) {}
+    reader = writer = null;
+  }
+  cleanup();
+}
+
+const PIDS = {
+  "0C": { k: "rpm",   f: (a, b) => (a * 256 + b) / 4 },
+  "0D": { k: "spd",   f: a => a },
+  "05": { k: "water", f: a => a - 40 },
+  "0F": { k: "iat",   f: a => a - 40 },
+  "11": { k: "tps",   f: a => a * 100 / 255 },
+  "04": { k: "load",  f: a => a * 100 / 255 },
+  "0B": { k: "map",   f: a => a },
+  "0E": { k: "adv",   f: a => a / 2 - 64 },
+  "06": { k: "stft",  f: a => (a - 128) * 100 / 128 },
+  "07": { k: "ltft",  f: a => (a - 128) * 100 / 128 },
+  "14": { k: "o2",    f: a => a / 200 },
+  "10": { k: "maf",   f: (a, b) => (a * 256 + b) / 100 },
+};
+const unsupported = new Set();
+let fast = true; // sufijo "1": el ELM contesta en cuanto llega la respuesta, sin esperar al tiempo límite
+function parse(pid, raw) {
+  const s = raw.replace(/\s/g, "").toUpperCase(), i = s.indexOf("41" + pid);
+  if (i < 0) return null;
+  const a = parseInt(s.substr(i + 4, 2), 16), b = parseInt(s.substr(i + 6, 2), 16);
+  return isNaN(a) ? null : PIDS[pid].f(a, b || 0);
+}
+async function readPid(pid) {
+  let r = await send("01" + pid + (fast ? "1" : ""));
+  if (fast && /\?/.test(r)) { fast = false; log("Adaptador sin modo rápido"); r = await send("01" + pid); }
+  const v = parse(pid, r);
+  if (v == null) { if (/NO ?DATA|\?/.test(r)) { unsupported.add(pid); setVal(PIDS[pid].k, null); log("PID " + pid + " no disponible"); } return; }
+  setVal(PIDS[pid].k, v);
+}
+async function loop() {
+  running = true;
+  const slow = ["0B", "11", "06", "14", "05", "0B", "0E", "10", "0F", "07", "04", "VOLT"];
+  let i = 0, n = 0;
+  while (running && connected) {
+    try {
+      if (n++ % 40 === 0) await checkMil();
+      await readPid("0C"); await readPid("0D"); await readPid("0C");
+      let p = slow[i++ % slow.length];
+      while (unsupported.has(p)) p = slow[i++ % slow.length];
+      if (p === "VOLT") { const v = parseFloat(await send("ATRV")); if (!isNaN(v)) setVal("volt", v); }
+      else await readPid(p);
+    } catch (e) { log("Error lectura: " + e.message); await new Promise(r => setTimeout(r, 500)); }
+  }
+}
+
+/* ---------- Averías ---------- */
+function decodeDtc(hex) { const n = parseInt(hex, 16); if (!n) return null; return "PCBU"[n >> 14] + ((n >> 12) & 3) + hex.slice(1).toUpperCase(); }
+
+/* Testigo y número de averías guardadas (PID 01 01); avisa si aparece alguna nueva */
+let dtcCount = null;
+async function checkMil() {
+  const s = (await send("0101" + (fast ? "1" : ""))).replace(/\s/g, "").toUpperCase(), i = s.indexOf("4101");
+  if (i < 0) return;
+  const a = parseInt(s.substr(i + 4, 2), 16);
+  if (isNaN(a)) return;
+  const cnt = a & 0x7f, mil = !!(a & 0x80);
+  if (R.eng) R.eng.firstChild.setAttribute("fill", mil || cnt ? "#ffb020" : "#3ddc84");
+  if (cnt > (dtcCount || 0)) alertNow("dtc", `${cnt === 1 ? "Hay 1 avería guardada" : `Hay ${cnt} averías guardadas`}. Míralas en el menú, Averías.`, "crit");
+  dtcCount = cnt;
+}
+
+/* Descripción de los códigos en castellano */
+const DTC_ES = {
+  P0100: "Caudalímetro (MAF): fallo de circuito", P0101: "Caudalímetro (MAF): lectura fuera de rango",
+  P0102: "Caudalímetro (MAF): señal baja", P0103: "Caudalímetro (MAF): señal alta",
+  P0105: "Sensor de presión del colector (MAP): fallo de circuito", P0106: "Sensor MAP: lectura fuera de rango",
+  P0107: "Sensor MAP: señal baja", P0108: "Sensor MAP: señal alta",
+  P0110: "Sensor de temperatura de admisión: fallo de circuito", P0111: "Sensor de temperatura de admisión: fuera de rango",
+  P0112: "Sensor de temperatura de admisión: señal baja", P0113: "Sensor de temperatura de admisión: señal alta",
+  P0115: "Sensor de temperatura del refrigerante: fallo de circuito", P0116: "Sensor de temperatura del refrigerante: fuera de rango",
+  P0117: "Sensor de temperatura del refrigerante: señal baja", P0118: "Sensor de temperatura del refrigerante: señal alta",
+  P0120: "Sensor de posición del acelerador (TPS): fallo de circuito", P0121: "Sensor TPS: lectura fuera de rango",
+  P0122: "Sensor TPS: señal baja", P0123: "Sensor TPS: señal alta",
+  P0125: "El motor tarda demasiado en calentar para regular la mezcla", P0128: "Termostato: el motor no llega a su temperatura",
+  P0130: "Sonda lambda delantera: fallo de circuito", P0131: "Sonda lambda delantera: señal baja",
+  P0132: "Sonda lambda delantera: señal alta", P0133: "Sonda lambda delantera: respuesta lenta",
+  P0134: "Sonda lambda delantera: sin actividad", P0135: "Sonda lambda delantera: fallo del calentador",
+  P0136: "Sonda lambda trasera: fallo de circuito", P0137: "Sonda lambda trasera: señal baja",
+  P0138: "Sonda lambda trasera: señal alta", P0139: "Sonda lambda trasera: respuesta lenta",
+  P0140: "Sonda lambda trasera: sin actividad", P0141: "Sonda lambda trasera: fallo del calentador",
+  P0171: "Mezcla demasiado pobre (entra aire o falta gasolina)", P0172: "Mezcla demasiado rica",
+  P0300: "Fallos de encendido en varios cilindros", P0301: "Fallo de encendido en el cilindro 1",
+  P0302: "Fallo de encendido en el cilindro 2", P0303: "Fallo de encendido en el cilindro 3", P0304: "Fallo de encendido en el cilindro 4",
+  P0325: "Sensor de picado: fallo de circuito", P0335: "Sensor de posición del cigüeñal: fallo de circuito",
+  P0340: "Sensor de posición del árbol de levas: fallo de circuito",
+  P0401: "Válvula EGR: caudal insuficiente", P0420: "Catalizador: rendimiento por debajo del mínimo",
+  P0441: "Sistema EVAP: caudal de purga incorrecto", P0443: "Válvula de purga del canister: fallo de circuito",
+  P0451: "Sensor de presión del depósito (EVAP): fuera de rango", P0452: "Sensor de presión del depósito: señal baja",
+  P0453: "Sensor de presión del depósito: señal alta", P0455: "Sistema EVAP: fuga grande (revisa el tapón de gasolina)",
+  P0456: "Sistema EVAP: fuga pequeña", P0500: "Sensor de velocidad del vehículo",
+  P0505: "Válvula de control de ralentí (IAC)", P0506: "Ralentí más bajo de lo esperado", P0507: "Ralentí más alto de lo esperado",
+  P0560: "Tensión del sistema eléctrico", P0562: "Tensión del sistema baja", P0563: "Tensión del sistema alta",
+  P0600: "Centralita: fallo de comunicación interna", P0700: "Cambio automático: avería en su centralita",
+  P1106: "Honda: sensor de presión barométrica, fuera de rango", P1107: "Honda: sensor barométrico, señal baja",
+  P1108: "Honda: sensor barométrico, señal alta", P1128: "Honda: presión de colector más baja de lo esperado",
+  P1129: "Honda: presión de colector más alta de lo esperado", P1259: "Honda: fallo del sistema VTEC",
+  P1297: "Honda: sensor de carga eléctrica (ELD), señal baja", P1298: "Honda: sensor de carga eléctrica (ELD), señal alta",
+  P1336: "Honda: sensor de posición del cigüeñal (CKF), señal intermitente", P1337: "Honda: sensor CKF, sin señal",
+  P1361: "Honda: sensor de punto muerto superior (TDC), señal intermitente", P1362: "Honda: sensor TDC, sin señal",
+  P1381: "Honda: sensor de posición de cilindro (CYP), señal intermitente", P1382: "Honda: sensor CYP, sin señal",
+  P1456: "Honda: fuga en el sistema EVAP, lado del depósito", P1457: "Honda: fuga en el sistema EVAP, lado del canister",
+  P1459: "Honda: interruptor de purga EVAP", P1491: "Honda: elevación de la válvula EGR insuficiente",
+  P1498: "Honda: sensor de elevación de la EGR, señal alta", P1508: "Honda: válvula de ralentí (IAC), fallo de circuito",
+  P1509: "Honda: válvula de ralentí (IAC), circuito abierto", P1607: "Honda: fallo interno de la centralita",
+  P1705: "Honda: señal de posición del cambio automático", P1706: "Honda: señal de posición del cambio automático",
+};
+const DTC_GROUP = {
+  P00: "Control de aire y combustible", P01: "Medición de aire y combustible", P02: "Inyectores y circuito de combustible",
+  P03: "Encendido o fallos de encendido", P04: "Control de emisiones (EGR, EVAP, catalizador)", P05: "Velocidad, ralentí o entradas auxiliares",
+  P06: "Centralita y sus salidas", P07: "Caja de cambios", P08: "Caja de cambios", P09: "Caja de cambios",
+};
+function dtcText(c) {
+  if (DTC_ES[c]) return DTC_ES[c];
+  const g = DTC_GROUP[c.slice(0, 3)];
+  if (g) return g + " (código genérico)";
+  if (c[0] === "P") return "Código propio del fabricante (motor o cambio)";
+  return { B: "Carrocería", C: "Chasis (frenos, suspensión)", U: "Comunicación entre centralitas" }[c[0]] || "Sin descripción";
+}
+async function readDtc() {
+  const list = $("dtcList");
+  if (!connected) { list.innerHTML = "<li>Conecta primero el adaptador.</li>"; return; }
+  running = false; await new Promise(r => setTimeout(r, 400));
+  list.innerHTML = "<li>Leyendo…</li>";
+  const r = (await send("03", 8000)).replace(/\s/g, "").toUpperCase(); log("03 → " + r);
+  const codes = []; let i = r.indexOf("43");
+  while (i >= 0) {
+    const body = r.slice(i + 2, i + 14);
+    for (let j = 0; j + 4 <= body.length; j += 4) { const c = decodeDtc(body.substr(j, 4)); if (c) codes.push(c); }
+    i = r.indexOf("43", i + 14);
+  }
+  list.innerHTML = codes.length ? [...new Set(codes)].map(c => `<li>${c}<small>${dtcText(c)}</small></li>`).join("") : "<li>Sin códigos guardados.</li>";
+  if (R.eng && codes.length) R.eng.firstChild.setAttribute("fill", "#ffb020");
+  loop();
+}
+async function clearDtc() {
+  $("clearBox").hidden = true;
+  if (!connected) return;
+  running = false; await new Promise(r => setTimeout(r, 400));
+  const r = await send("04", 8000); log("04 → " + r);
+  $("dtcList").innerHTML = /44/.test(r.replace(/\s/g, "")) ? "<li>Códigos borrados.</li>" : "<li>La centralita no confirmó el borrado.</li>";
+  status("Conectado", "on"); dtcCount = 0;
+  loop();
+}
+
+/* ---------- Demo ---------- */
+let demoT = null;
+function startDemo() {
+  if (connected) return;
+  stopDemo(); for (const k in H) H[k] = []; resetTrip(); status("Demo", "demo"); $("demoBtn").textContent = "Parar demo";
+  let t = 0, rpm = 850, gear = 1, water = 62;
+  demoT = setInterval(() => {
+    t += 0.05;
+    const phase = t % 14;
+    if (phase < 11) { rpm += 120 + 40 * Math.sin(t * 3) - gear * 16; if (rpm > cfg.shift + 150) { gear = Math.min(cfg.gears.length, gear + 1); rpm *= 0.68; } }
+    else { rpm += (850 - rpm) * 0.12; if (phase > 13.8) gear = 1; }
+    let spd = phase < 11 ? rpm / 1000 * cfg.gears[gear - 1] : Math.max(0, (V.spd || 0) * 0.86);
+    if (phase >= 11 && spd < 3) spd = 0;
+    if (phase < 0.6) spd = 0;
+    water = Math.min(88, water + 0.02);
+    const tps = phase < 11 ? 85 + 10 * Math.sin(t) : 0;
+    setVal("rpm", rpm); setVal("spd", spd); setVal("water", water); setVal("iat", 24 + 3 * Math.sin(t / 5));
+    setVal("tps", tps); setVal("load", tps ? 70 + 20 * Math.sin(t * 2) : 18); setVal("map", tps ? 92 + 4 * Math.sin(t) : (rpm > 1500 ? 22 : 32));
+    setVal("adv", tps ? 22 + 6 * Math.sin(t) : 12); setVal("stft", 6 * Math.sin(t * 1.3)); setVal("ltft", 3.1 + Math.sin(t / 4));
+    setVal("o2", 0.45 + 0.42 * Math.sin(t * 5)); setVal("volt", 14.0 + 0.15 * Math.sin(t * 0.7));
+  }, 80);
+}
+function stopDemo() { if (demoT) { clearInterval(demoT); demoT = null; $("demoBtn").textContent = "Demo"; if (!connected) status("Desconectado", ""); } }
+
+/* ---------- UI ---------- */
+const OVS = ["menuOv", "dtcOv", "cfgOv", "pickOv", "logOv", "perfOv"];
+function openOv(id) { OVS.forEach(o => $(o).hidden = o !== id); }
+function closeOv() { OVS.forEach(o => $(o).hidden = true); $("clearBox").hidden = true; }
+OVS.forEach(o => $(o).addEventListener("click", e => { if (e.target.id === o) closeOv(); }));
+const NUM_FIELDS = [["cfgRed", "red"], ["cfgShift", "shift"], ["cfgVtec", "vtec"], ["cfgWater", "water"], ["cfgVolt", "volt"], ["cfgCc", "cc"], ["cfgPrice", "price"], ["cfgFcal", "fcal"]];
+function tankInfo() {
+  $("tankInfo").textContent = tank.started
+    ? `Desde el último lleno: ${tank.km.toFixed(1)} km y ${(tank.lraw * cfg.fcal).toFixed(2)} L estimados.`
+    : "Todavía no hay ningún depósito lleno registrado.";
+}
+function openCfg() {
+  NUM_FIELDS.forEach(([id, k]) => $(id).value = cfg[k]);
+  $("cfgName").value = cfg.name; $("fillL").value = "";
+  $("cfgSound").checked = cfg.sound; $("cfgAuto").checked = cfg.autoConn;
+  gearInfo(); tankInfo(); openOv("cfgOv");
+}
+NUM_FIELDS.forEach(([id, k]) =>
+  $(id).addEventListener("change", e => { const v = parseFloat(e.target.value); if (!isNaN(v)) { cfg[k] = v; saveCfg(); build(); status($("stat").textContent, mode); tankInfo(); } }));
+$("cfgName").addEventListener("change", e => { cfg.name = e.target.value.trim(); saveCfg(); build(); status($("stat").textContent, mode); });
+$("learnBtn").onclick = () => {
+  let fail = false;
+  if (!learning) { learning = true; clusters = []; lastRatio = 0; stableN = 0; }
+  else {
+    const g = goodClusters();
+    learning = false;
+    if (g.length >= 2) { cfg.gears = g.map(x => +x.toFixed(2)); saveCfg(); } else fail = true;
+  }
+  if (R.gearBox) R.gearBox.style.stroke = learning ? "var(--amber)" : "";
+  gearInfo();
+  if (fail) $("gearInfo").textContent = "No he detectado suficientes marchas; se mantienen las anteriores. " + $("gearInfo").textContent;
+};
+$("gearReset").onclick = () => { learning = false; cfg.gears = GEARS_EJ9.slice(); saveCfg(); if (R.gearBox) R.gearBox.style.stroke = ""; gearInfo(); };
+$("fillBtn").onclick = () => {
+  const L = parseFloat($("fillL").value), msg = $("fillMsg");
+  if (!tank.started || isNaN(L)) {
+    tank = { started: true, km: 0, lraw: 0 };
+    msg.textContent = "Punto de partida guardado. En el próximo lleno escribe los litros que entren y pulsa Registrar.";
+  } else if (tank.km < 20 || tank.lraw < 1) {
+    tank = { started: true, km: 0, lraw: 0 };
+    msg.textContent = "Muy pocos kilómetros para calibrar (mejor más de 150 km). He puesto este lleno como nuevo punto de partida.";
+  } else {
+    const real = L / tank.km * 100;
+    cfg.fcal = +Math.max(0.5, Math.min(2, L / tank.lraw)).toFixed(3); saveCfg();
+    msg.textContent = `Consumo real del depósito: ${real.toFixed(1)} L/100 km. Factor ajustado a ${cfg.fcal.toFixed(2)}.`;
+    tank = { started: true, km: 0, lraw: 0 };
+    $("cfgFcal").value = cfg.fcal;
+  }
+  saveTank(); $("fillL").value = ""; tankInfo();
+};
+$("menuBtn").onclick = () => openOv("menuOv");
+$("closeMenu").onclick = closeOv;
+$("connBtn").onclick = () => {
+  if (connected) { userOff = true; disconnect(); return; }
+  userOff = false; navigator.serial ? connectSerial() : connect();
+};
+$("connBle").onclick = () => { if (!connected) { userOff = false; connect(); } };
+$("cfgSound").onchange = e => { cfg.sound = e.target.checked; saveCfg(); };
+$("cfgAuto").onchange = e => { cfg.autoConn = e.target.checked; saveCfg(); };
+$("testSound").onclick = () => { unlockAudio(); beep("crit"); };
+$("demoBtn").onclick = () => { demoT ? stopDemo() : startDemo(); closeOv(); };
+$("dtcBtn").onclick = () => openOv("dtcOv");
+$("cfgBtn").onclick = openCfg;
+$("tripBtn").onclick = () => { resetTrip(); closeOv(); };
+$("closeCfg").onclick = closeOv;
+$("closeDtc").onclick = closeOv;
+$("readDtc").onclick = readDtc;
+$("clearDtc").onclick = () => { $("clearBox").hidden = false; };
+$("clearYes").onclick = clearDtc;
+$("clearNo").onclick = () => { $("clearBox").hidden = true; };
+
+async function wake() { try { if (navigator.wakeLock) await navigator.wakeLock.request("screen"); } catch (e) {} }
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") wake(); });
+wake();
+setInterval(() => { if (trip.t0 && !dirty) render(); }, 1000);
+
+/* ---------- Elegir qué dato va en cada hueco ---------- */
+let pickSlot = null, swipedAt = 0;
+function openPicker(kind, i) {
+  if (performance.now() - swipedAt < 400) return;
+  pickSlot = { kind, i };
+  const cur = kind === "arc" ? cfg.arcs[i] : cfg.cells[i];
+  $("pickTitle").textContent = kind === "arc" ? "DATO DEL ARCO" : "DATO DE LA GRÁFICA";
+  $("pickList").innerHTML = Object.keys(SENSORS).map(k =>
+    `<button data-k="${k}" class="${k === cur ? "cur" : ""}">${SENSORS[k].n}</button>`).join("");
+  openOv("pickOv");
+}
+$("pickList").addEventListener("click", e => {
+  const b = e.target.closest("button[data-k]");
+  if (!b || !pickSlot) return;
+  (pickSlot.kind === "arc" ? cfg.arcs : cfg.cells)[pickSlot.i] = b.dataset.k;
+  saveCfg(); rebuild(); closeOv();
+});
+$("pickReset").onclick = () => { cfg.arcs = DEF_ARCS.slice(); cfg.cells = DEF_CELLS.slice(); saveCfg(); rebuild(); closeOv(); };
+$("closePick").onclick = closeOv;
+["colL", "colR"].forEach(id => $(id).addEventListener("click", e => {
+  const c = e.target.closest(".cell");
+  if (c) openPicker("cell", +c.dataset.slot);
+}));
+function rebuild() { buildCells(); build(); status($("stat").textContent, mode); }
+
+/* ---------- Pantallas: calle · completa · taller ---------- */
+const VIEWS = ["street", "full", "shop"];
+const SEGS = [];
+for (let i = 0; i < 40; i++) SEGS.push($("sbar").appendChild(document.createElement("i")));
+function setView(v) {
+  if (!VIEWS.includes(v)) v = "full";
+  cfg.view = v; saveCfg();
+  $("app").hidden = v !== "full"; $("street").hidden = v !== "street"; $("shop").hidden = v !== "shop";
+  [...$("dots").children].forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  showDots();
+  render();
+}
+let dotsT = 0;
+function showDots() { $("dots").classList.add("show"); clearTimeout(dotsT); dotsT = setTimeout(() => $("dots").classList.remove("show"), 2500); }
+function stepView(d) { const i = VIEWS.indexOf(cfg.view) + d; if (i >= 0 && i < VIEWS.length) setView(VIEWS[i]); }
+$("dots").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setView(b.dataset.v); });
+let tx0 = null, ty0 = 0;
+document.addEventListener("touchstart", e => {
+  if (OVS.some(o => !$(o).hidden) || e.touches.length > 1) { tx0 = null; return; }
+  tx0 = e.touches[0].clientX; ty0 = e.touches[0].clientY;
+}, { passive: true });
+document.addEventListener("touchend", e => {
+  if (tx0 == null) return;
+  const t = e.changedTouches[0], dx = t.clientX - tx0, dy = t.clientY - ty0; tx0 = null;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { swipedAt = performance.now(); stepView(dx < 0 ? 1 : -1); }
+}, { passive: true });
+document.addEventListener("keydown", e => {
+  if (OVS.some(o => !$(o).hidden)) return;
+  if (e.key === "ArrowRight") stepView(1); else if (e.key === "ArrowLeft") stepView(-1);
+});
+
+/* ---------- Modo noche: Día / Noche / Auto (de 20:00 a 8:00) ---------- */
+const NIGHT_TXT = { off: "Modo noche: no", on: "Modo noche: sí", auto: "Modo noche: auto" };
+function isNight() { const h = new Date().getHours(); return cfg.night === "on" || (cfg.night === "auto" && (h >= 20 || h < 8)); }
+function applyNight() {
+  nightNow = isNight();
+  document.documentElement.classList.toggle("night", nightNow);
+  $("nightBtn").textContent = NIGHT_TXT[cfg.night] || NIGHT_TXT.auto;
+  build(); status($("stat").textContent, mode);
+}
+$("nightBtn").onclick = () => {
+  cfg.night = { off: "on", on: "auto", auto: "off" }[cfg.night] || "off";
+  saveCfg(); applyNight();
+};
+setInterval(() => { if (isNight() !== nightNow) applyNight(); }, 60000);
+
+/* ---------- Avisos: mensaje en pantalla + sonido + vibración ---------- */
+let actx = null, toastT = 0;
+function unlockAudio() {
+  try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume(); } catch (e) {}
+}
+document.addEventListener("pointerdown", unlockAudio, { capture: true });
+const TONES = { crit: [[1760, .14], [1760, .14], [1760, .3]], warn: [[1100, .18], [880, .25]], ok: [[1320, .12], [1760, .2]] };
+function beep(kind) {
+  if (!cfg.sound || !actx) return;
+  let t = actx.currentTime + 0.02;
+  for (const [f, d] of TONES[kind] || TONES.warn) {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = "square"; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t + d + 0.02); t += d + 0.07;
+  }
+  try { if (cfg.sound && navigator.vibrate) navigator.vibrate(kind === "crit" ? [200, 100, 200] : 150); } catch (e) {}
+}
+function toast(msg, kind) {
+  const t = $("toast"); t.textContent = msg; t.className = "toast " + (kind || ""); t.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, kind === "crit" ? 6000 : 3500);
+}
+const lastAlert = {};
+function alertNow(key, msg, kind) {
+  const now = Date.now();
+  if (lastAlert[key] && now - lastAlert[key] < 30000) return;
+  lastAlert[key] = now; toast(msg, kind); beep(kind);
+}
+function checkAlerts() {
+  const cond = {
+    water: V.water != null && V.water >= cfg.water ? `Temperatura de agua alta: ${Math.round(V.water)} °C` : "",
+    volt: V.volt != null && V.volt < cfg.volt && (V.rpm || 0) > 500 ? `Batería baja con el motor en marcha: ${V.volt.toFixed(1)} V. Revisa el alternador.` : "",
+  };
+  for (const k in cond) { if (cond[k]) alertNow(k, cond[k], "crit"); else lastAlert[k] = 0; }
+}
+setInterval(checkAlerts, 1000);
+
+/* ---------- Grabación de datos (5 muestras por segundo) ---------- */
+const LOGK = ["rpm", "spd", "water", "iat", "tps", "mapm", "load", "adv", "stft", "ltft", "o2", "volt", "fuel", "lh", "maf"];
+const LOGCOL = ["#ff4a3d", "#4fc3f7", "#ffb020", "#7ee787", "#d2a8ff", "#f0f0f0", "#ff8fd8", "#9be9a8", "#79c0ff", "#ffa657", "#e3b341", "#a5d6ff", "#ffdf5d", "#56d4dd", "#c9d1d9"];
+let rec = null, recT = 0, lastLog = null, logSel = ["rpm", "spd", "tps", "water"], logCursor = null;
+function startRec() {
+  rec = { start: new Date(), t0: performance.now(), rows: [] };
+  recT = setInterval(() => {
+    const t = (performance.now() - rec.t0) / 1000;
+    rec.rows.push([+t.toFixed(2), ...LOGK.map(k => V[k] == null ? null : +V[k].toFixed(3)), gearOf(V.rpm, V.spd)]);
+    $("recBadge").textContent = "REC " + fmtDur(t * 1000).replace(/^0:/, "");
+    if (rec.rows.length >= 18000) stopRec(); // 1 hora máximo
+  }, 200);
+  $("recBadge").hidden = false; $("recBtn").textContent = "Parar grabación";
+  toast("Grabando datos", "ok");
+}
+function stopRec() {
+  clearInterval(recT); $("recBadge").hidden = true; $("recBtn").textContent = "Grabar datos";
+  if (rec && rec.rows.length > 2) { lastLog = rec; $("logBtn").hidden = false; openLog(); }
+  rec = null;
+}
+function openLog() {
+  if (!lastLog) return;
+  const r = lastLog.rows, dur = r[r.length - 1][0];
+  $("logInfo").textContent = `${lastLog.start.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })} · ${fmtDur(dur * 1000)} · ${r.length} muestras`;
+  $("logChips").innerHTML = LOGK.map((k, i) => `<button data-k="${k}" class="${logSel.includes(k) ? "on" : ""}" style="${logSel.includes(k) ? "background:" + LOGCOL[i] : ""}">${SENSORS[k].n}</button>`).join("");
+  logCursor = null; openOv("logOv"); requestAnimationFrame(drawLog);
+}
+function drawLog() {
+  if (!lastLog || $("logOv").hidden) return;
+  const c = $("logCv"), dpr = window.devicePixelRatio || 1;
+  const w = c.width = Math.round(c.clientWidth * dpr), h = c.height = Math.round(c.clientHeight * dpr);
+  const ctx = c.getContext("2d"), r = lastLog.rows, T = r[r.length - 1][0] || 1;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = "#222"; ctx.lineWidth = dpr;
+  for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, h * i / 4); ctx.lineTo(w, h * i / 4); ctx.stroke(); }
+  ctx.fillStyle = "#777"; ctx.font = `${11 * dpr}px Roboto, sans-serif`;
+  const step = T > 600 ? 120 : T > 120 ? 30 : T > 30 ? 10 : 2;
+  for (let s = step; s < T; s += step) { const x = s / T * w; ctx.fillRect(x, h - 5 * dpr, dpr, 5 * dpr); ctx.fillText(fmtDur(s * 1000).replace(/^0:/, ""), x + 3 * dpr, h - 7 * dpr); }
+  logSel.forEach(k => {
+    const ci = LOGK.indexOf(k), g = SENSORS[k];
+    ctx.beginPath(); let on = false;
+    r.forEach(row => {
+      const v = row[ci + 1];
+      if (v == null) { on = false; return; }
+      const x = row[0] / T * w, y = h - Math.max(0, Math.min(1, (v - g.min) / (g.max - g.min))) * (h - 16 * dpr) - 8 * dpr;
+      on ? ctx.lineTo(x, y) : ctx.moveTo(x, y); on = true;
+    });
+    ctx.strokeStyle = LOGCOL[ci]; ctx.lineWidth = 1.6 * dpr; ctx.stroke();
+  });
+  if (logCursor != null) {
+    const x = logCursor * w; ctx.strokeStyle = "#fff"; ctx.lineWidth = dpr;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    const t = logCursor * T; let row = r[0];
+    for (const q of r) { if (q[0] > t) break; row = q; }
+    $("logRead").textContent = `${row[0].toFixed(1)} s · marcha ${row[row.length - 1]} · ` +
+      logSel.map(k => { const v = row[LOGK.indexOf(k) + 1]; return `${SENSORS[k].n}: ${v == null ? "-" : v.toFixed(SENSORS[k].d) + " " + SENSORS[k].u}`; }).join(" · ");
+  }
+}
+$("logChips").addEventListener("click", e => {
+  const b = e.target.closest("button[data-k]"); if (!b) return;
+  const k = b.dataset.k;
+  logSel = logSel.includes(k) ? logSel.filter(x => x !== k) : [...logSel, k];
+  openLog();
+});
+function logPoint(e) { const b = $("logCv").getBoundingClientRect(); logCursor = Math.max(0, Math.min(1, (e.clientX - b.left) / b.width)); drawLog(); }
+$("logCv").addEventListener("pointerdown", e => { $("logCv").setPointerCapture(e.pointerId); logPoint(e); });
+$("logCv").addEventListener("pointermove", e => { if (e.buttons) logPoint(e); });
+$("logCsv").onclick = async () => {
+  if (!lastLog) return;
+  const num = v => v == null ? "" : String(v).replace(".", ",");
+  const head = ["tiempo_s", ...LOGK.map(k => `${SENSORS[k].n} (${SENSORS[k].u})`), "marcha"].join(";");
+  const csv = "﻿" + head + "\n" + lastLog.rows.map(r => r.map((v, i) => i === r.length - 1 ? v : num(v)).join(";")).join("\n");
+  const d = lastLog.start, p = n => String(n).padStart(2, "0");
+  const name = `${(cfg.name || "coche").replace(/\W+/g, "_")}_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.csv`;
+  const blob = new Blob([csv], { type: "text/csv" });
+  try {
+    const file = new File([blob], name, { type: "text/csv" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+  } catch (e) { if (e && e.name === "AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  $("logNote").textContent = `Guardado como ${name} en Descargas.`;
+};
+$("recBtn").onclick = () => { closeOv(); rec ? stopRec() : startRec(); };
+$("recBadge").onclick = () => stopRec();
+$("logBtn").onclick = openLog;
+$("closeLog").onclick = closeOv;
+window.addEventListener("resize", () => { if (!$("logOv").hidden) drawLog(); });
+
+/* ---------- Cronómetro 0–100 km/h y 400 m ---------- */
+const perf = { state: "off", t0: 0, dist: 0, lastT: 0, lastSpd: 0, zeroT: 0, t100: null, t400: null, v400: null };
+let best = { t100: null, t400: null };
+try { Object.assign(best, JSON.parse(localStorage.getItem("ej9best") || "{}")); } catch (e) {}
+const saveBest = () => { try { localStorage.setItem("ej9best", JSON.stringify(best)); } catch (e) {} };
+function perfSample(spd, now) {
+  if (perf.state === "off" || perf.state === "done") return;
+  if (perf.state === "armed") {
+    if (spd < 1) { perf.state = "ready"; perf.zeroT = now; }
+    return;
+  }
+  if (perf.state === "ready") {
+    if (spd < 1) { perf.zeroT = now; return; }
+    Object.assign(perf, { state: "run", t0: (perf.zeroT + now) / 2, dist: 0, lastT: (perf.zeroT + now) / 2, lastSpd: 0, t100: null, t400: null, v400: null });
+  }
+  if (perf.state === "run") {
+    const dt = now - perf.lastT, d0 = perf.dist;
+    perf.dist += (spd + perf.lastSpd) / 2 * dt / 3600000;
+    if (perf.t100 == null && spd >= 100 && perf.lastSpd < 100)
+      perf.t100 = (perf.lastT + (100 - perf.lastSpd) / (spd - perf.lastSpd) * dt - perf.t0) / 1000;
+    if (perf.t400 == null && perf.dist >= 0.4) {
+      const f = (0.4 - d0) / (perf.dist - d0);
+      perf.t400 = (perf.lastT + f * dt - perf.t0) / 1000; perf.v400 = perf.lastSpd + f * (spd - perf.lastSpd);
+    }
+    perf.lastT = now; perf.lastSpd = spd;
+    if ((perf.t100 != null && perf.t400 != null) || spd < 1 || now - perf.t0 > 60000) perfFinish();
+  }
+}
+function perfFinish() {
+  perf.state = "done";
+  const parts = [];
+  if (perf.t100 != null) { parts.push(`0–100: ${perf.t100.toFixed(2)} s`); if (!best.t100 || perf.t100 < best.t100) best.t100 = +perf.t100.toFixed(2); }
+  if (perf.t400 != null) { parts.push(`400 m: ${perf.t400.toFixed(2)} s a ${Math.round(perf.v400)} km/h`); if (!best.t400 || perf.t400 < best.t400) best.t400 = +perf.t400.toFixed(2); }
+  saveBest();
+  if (parts.length) { toast(parts.join(" · "), "ok"); beep("ok"); } else toast("Cronómetro: no se llegó a 100 km/h ni a 400 m", "");
+  perfUI();
+}
+function perfUI() {
+  if ($("perfOv").hidden) return;
+  const txt = { off: "Pulsa Preparar con el coche parado.", armed: "Para el coche del todo…", ready: "Listo. Sal cuando quieras.", run: "Midiendo…", done: "Terminado. Pulsa Preparar para otra." };
+  $("perfState").textContent = txt[perf.state];
+  $("pT").textContent = perf.state === "run" ? ((performance.now() - perf.t0) / 1000).toFixed(2) : perf.state === "done" && perf.lastT ? ((perf.lastT - perf.t0) / 1000).toFixed(2) : "0.00";
+  $("pV").textContent = V.spd != null ? Math.round(V.spd) : "-";
+  $("p100").textContent = perf.t100 != null ? perf.t100.toFixed(2) : "-";
+  $("p400").textContent = perf.t400 != null ? perf.t400.toFixed(2) : "-";
+  $("perfBest").textContent = `Mejores: 0–100 ${best.t100 ? best.t100.toFixed(2) + " s" : "-"} · 400 m ${best.t400 ? best.t400.toFixed(2) + " s" : "-"}`;
+  $("perfArm").textContent = perf.state === "off" || perf.state === "done" ? "Preparar" : "Cancelar";
+}
+(function perfTick() { if (!$("perfOv").hidden) perfUI(); setTimeout(perfTick, 100); })();
+$("perfBtn").onclick = () => { openOv("perfOv"); perfUI(); };
+$("perfArm").onclick = () => {
+  if (perf.state === "off" || perf.state === "done") Object.assign(perf, { state: "armed", t100: null, t400: null, v400: null, lastT: 0, t0: 0 });
+  else perf.state = "off";
+  perfUI();
+};
+$("perfClear").onclick = () => { best = { t100: null, t400: null }; saveBest(); perfUI(); };
+$("closePerf").onclick = closeOv;
+
+/* ---------- Pantalla completa y horizontal ---------- */
+async function toggleFull() {
+  try {
+    if (!document.fullscreenElement) await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+    else await document.exitFullscreen();
+  } catch (e) { toast("Este navegador no deja poner pantalla completa aquí. Instala la app en la pantalla de inicio.", ""); }
+  try { if (document.fullscreenElement && screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape"); } catch (e) {}
+}
+document.addEventListener("fullscreenchange", () => { $("fullBtn").textContent = document.fullscreenElement ? "Salir de pantalla completa" : "Pantalla completa"; });
+$("fullBtn").onclick = () => { closeOv(); toggleFull(); };
+
+buildCells();
+applyNight();
+setView(cfg.view);
+startDemo();
+setTimeout(tryAuto, 1500);
+})();
+</script>
