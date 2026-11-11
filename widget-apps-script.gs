@@ -13,10 +13,16 @@
 // La app envía los km aquí (cada 2 km, al desconectar y al pulsar "Enviar km ahora")
 function doPost(e) {
   const d = JSON.parse(e.postData.contents);
-  const hoja = SpreadsheetApp.getActive().getSheets()[0];
-  if (hoja.getLastRow() === 0) hoja.appendRow(["Fecha", "Km", "Km del viaje", "Litros del viaje", "Coche"]);
-  hoja.appendRow([new Date(), d.km, d.viaje_km, d.viaje_l, d.coche]);
+  // Primero se guardan los km (es lo que lee el widget), pase lo que pase con la hoja
   PropertiesService.getScriptProperties().setProperties({ km: String(d.km), fecha: d.fecha || "" });
+  try {
+    const libro = SpreadsheetApp.getActive();
+    if (libro) {
+      const hoja = libro.getSheets()[0];
+      if (hoja.getLastRow() === 0) hoja.appendRow(["Fecha", "Km", "Km del viaje", "Litros del viaje", "Coche"]);
+      hoja.appendRow([new Date(), d.km, d.viaje_km, d.viaje_l, d.coche]);
+    }
+  } catch (err) {}
   return ContentService.createTextOutput("ok");
 }
 
