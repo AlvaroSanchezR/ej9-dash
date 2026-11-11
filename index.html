@@ -402,7 +402,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v1.7 · 11/11/2026 16:40"; // se cambia con cada actualización
+const APP_VERSION = "v1.8 · 11/11/2026 16:58"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "iat", "tps", "mapm"];
@@ -665,6 +665,7 @@ function gearInfo() {
 /* Aguja suave: la aguja persigue el último valor real repartiendo el movimiento entre lecturas */
 let dispRpm = 0, rpmDt = 150, lastRpmT = 0, lastFrame = 0, rpmSlope = 0, prevRpm = 0, sweepT0 = 0;
 const flashEl = $("shiftFlash");
+const AC = {}; // último estado dibujado, para no repetir trabajo
 function anim(t) {
   const dt = lastFrame ? Math.min(100, t - lastFrame) : 16; lastFrame = t;
   // Predicción: proyecta la última lectura con su ritmo de subida/bajada para compensar el retraso del OBD
@@ -673,21 +674,29 @@ function anim(t) {
   // Barrido de aguja al conectar: sube hasta el final y baja, como un cuadro de verdad
   if (sweepT0) { const p = (t - sweepT0) / 1800; if (p < 1) dispRpm = MAXRPM * Math.sin(Math.PI * Math.max(0, p)); else sweepT0 = 0; }
   else dispRpm += (target - dispRpm) * (1 - Math.exp(-dt / 30));
-  flashEl.classList.toggle("on", !!cfg.flash && !sweepT0 && dispRpm >= cfg.shift && (V.rpm || 0) >= cfg.shift - 300);
+  const fl = !!cfg.flash && !sweepT0 && dispRpm >= cfg.shift && (V.rpm || 0) >= cfg.shift - 300;
+  if (fl !== AC.fl) { AC.fl = fl; flashEl.classList.toggle("on", fl); }
   if (cfg.view === "g") drawG(t);
+  // Solo se toca la pantalla cuando algo cambia de verdad (ahorra batería sin perder fluidez)
+  const txt = Math.round(dispRpm / 10) * 10;
   if (R.needle && cfg.view === "full") {
-    R.needle.setAttribute("transform", `rotate(${rpmAngle(dispRpm).toFixed(2)} ${CX} ${CY})`);
-    R.needle.firstChild.setAttribute("fill", dispRpm >= cfg.shift ? "#ff5a4d" : "var(--red)");
-    R.rpm.textContent = Math.round(dispRpm / 10) * 10;
-    R.vtec.classList.toggle("on", cfg.vtec > 0 && dispRpm >= cfg.vtec);
+    if (AC.el !== R.needle) { AC.el = R.needle; AC.ang = AC.hot = AC.txt = AC.vtec = null; }
+    const ang = rpmAngle(dispRpm).toFixed(2), hot = dispRpm >= cfg.shift, vt = cfg.vtec > 0 && dispRpm >= cfg.vtec;
+    if (ang !== AC.ang) { AC.ang = ang; R.needle.setAttribute("transform", `rotate(${ang} ${CX} ${CY})`); }
+    if (hot !== AC.hot) { AC.hot = hot; R.needle.firstChild.setAttribute("fill", hot ? "#ff5a4d" : "var(--red)"); }
+    if (txt !== AC.txt) { AC.txt = txt; R.rpm.textContent = txt; }
+    if (vt !== AC.vtec) { AC.vtec = vt; R.vtec.classList.toggle("on", vt); }
   }
   if (cfg.view === "street") {
     const lit = Math.round(Math.min(dispRpm, MAXRPM) / MAXRPM * SEGS.length);
-    SEGS.forEach((s, i) => {
-      const r = (i + 1) / SEGS.length * MAXRPM;
-      s.className = i < lit ? "on" + (r > cfg.red ? " rd" : r > cfg.shift - 800 ? " hi" : "") : "";
-    });
-    $("sRpm").textContent = Math.round(dispRpm / 10) * 10;
+    if (lit !== AC.lit) {
+      AC.lit = lit;
+      SEGS.forEach((s, i) => {
+        const r = (i + 1) / SEGS.length * MAXRPM;
+        s.className = i < lit ? "on" + (r > cfg.red ? " rd" : r > cfg.shift - 800 ? " hi" : "") : "";
+      });
+    }
+    if (txt !== AC.stxt) { AC.stxt = txt; $("sRpm").textContent = txt; }
   }
   requestAnimationFrame(anim);
 }
@@ -758,13 +767,16 @@ function fmtVal(k, v) {
   if (k === "fuel" && V.lh != null) return V.lh.toFixed(1) + " L/h";
   return "-";
 }
+/* Las gráficas se redibujan como mucho 5 veces por segundo: los datos no llegan más rápido */
+const chartQ = new Map();
+setInterval(() => { chartQ.forEach((k, id) => { const c = $(id); if (c && c.offsetParent) drawChart(c, k); }); chartQ.clear(); }, 200);
 function renderCells(prefix, keys) {
   keys.forEach((k, i) => {
     const v = V[k], c = $(prefix + "c" + i);
     if (!c) return;
     $(prefix + "v" + i).textContent = fmtVal(k, v);
     c.className = "cell " + stateOf(k, v);
-    drawChart($(prefix + "cv" + i), k);
+    chartQ.set(prefix + "cv" + i, k);
   });
 }
 function drawChart(c, k) {
