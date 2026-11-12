@@ -8,14 +8,14 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Roboto:wght@500;700;900&family=Teko:wght@500;600;700&family=Saira+Condensed:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Roboto:wght@500;700;900&family=Teko:wght@500;600;700&family=Saira+Semi+Condensed:wght@500;600;700&family=Saira+Condensed:wght@500;600;700&display=swap">
 <style>
 /* Layout: estilo HonDash — reloj central de esfera blanca con cuatro arcos, columnas de gráficas de historial a los lados, menú flotante */
 :root{
   --bg:#000; --fg:#f4f4f4; --dim:#9a9a9a; --line:#2c2c2c; --face:#f2f2f2; --ink:#111;
   --red:#e3170a; --amber:#ffb020; --track:#262626;
   --ui:"Roboto",system-ui,sans-serif; --brand:"Rajdhani",system-ui,sans-serif;
-  --race:"Teko","Rajdhani",system-ui,sans-serif; --lab:"Saira Condensed","Roboto Condensed",system-ui,sans-serif;
+  --race:"Saira Semi Condensed","Rajdhani",system-ui,sans-serif; --lab:"Saira Condensed","Roboto Condensed",system-ui,sans-serif;
   color-scheme:dark;
 }
 [hidden]{display:none!important}
@@ -39,8 +39,8 @@ body{background:var(--bg);color:var(--fg);font-family:var(--ui);margin:0;
 /* Telemetría estilo competición */
 .col .cell,.shop .cell{background:#070707;border:1px solid #191919;border-radius:6px;padding:5px 8px 4px}
 .cell canvas{border-radius:0 0 5px 5px}
-.cell .hd{font-family:var(--ui);font-weight:500;color:#e6e6e6}
-.cell .mx,.cell .mn{font-family:var(--ui);font-weight:500;color:#777}
+.cell .hd{font-family:var(--lab);font-weight:500;color:#e6e6e6;font-size:clamp(10px,1.5vw,13px)}
+.cell .mx,.cell .mn{font-family:var(--lab);font-weight:500;color:#777}
 .cell .mn{bottom:3px;left:8px} .colR .cell .mn{left:auto;right:8px}
 .cell .v{font-family:var(--race);font-weight:600;font-size:clamp(20px,3.6vw,32px);line-height:.85;letter-spacing:.01em;margin-top:4px}
 .cell.warn .v{color:var(--amber)} .cell.crit .v{color:var(--red)}
@@ -79,21 +79,22 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 
 /* SVG */
 .tick{stroke:var(--ink)} .tick.rz{stroke:#fff} .tick.mn{opacity:.55}
-.num{font-family:var(--ui);font-weight:900;fill:var(--ink);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke-width:7px;stroke-linejoin:round}
-.lbl{font-family:var(--ui);fill:var(--fg);font-weight:500}
+.num{font-family:var(--race);font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke-width:7px;stroke-linejoin:round}
+.lbl{font-family:var(--lab);fill:var(--fg);font-weight:500}
 .lbl.dim{fill:var(--dim)}
 .dig{font-family:var(--race);font-weight:600;fill:var(--fg);text-anchor:middle}
 .vtec{font-family:var(--race);font-weight:700;font-size:15px;letter-spacing:3px;fill:#2a2a2a;text-anchor:middle}
 .vtec.on{fill:var(--red)}
-.arcO{fill:none;stroke:#d6d6d6;stroke-width:16}
-.arcR{fill:none;stroke:#e3170a;stroke-width:16}
-.trk{fill:none;stroke:#050505;stroke-width:12}
-.arcRi{fill:none;stroke:#e3170a;stroke-width:12;opacity:.45}
-.fil{fill:none;stroke:var(--fg);stroke-width:12}
+.arcL{fill:none;stroke:#7a7a7a;stroke-width:2.5}
+.arcR{fill:none;stroke:#e3170a;stroke-width:3.5}
+.trk{fill:none;stroke:#1a1a1a;stroke-width:11}
+.endT{stroke:#8a8a8a;stroke-width:3;stroke-linecap:butt}
+.endT.r{stroke:#e3170a;stroke-width:3.5}
+.fil{fill:none;stroke:var(--fg);stroke-width:11}
 .fil.warn{stroke:var(--amber)} .fil.crit{stroke:var(--red)}
 .cap{fill:none;stroke:var(--red);stroke-width:13}
-.box{fill:none;stroke:#cfcfcf;stroke-width:3}
-.gtxt{font-family:var(--race);font-weight:600;fill:var(--fg);text-anchor:middle;dominant-baseline:central;font-size:44px}
+.box{fill:none;stroke:#bdbdbd;stroke-width:2}
+.gtxt{font-family:var(--race);font-weight:600;fill:var(--fg);text-anchor:middle;dominant-baseline:central;font-size:40px}
 .brand{font-family:var(--brand);font-weight:600;font-size:22px;fill:#8a8a8a;text-anchor:middle;letter-spacing:1px}
 .hit{fill:none;stroke:transparent;stroke-width:46;cursor:pointer}
 .cell{cursor:pointer}
@@ -414,7 +415,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v2.6 · 12/11/2026 20:15"; // se cambia con cada actualización
+const APP_VERSION = "v2.7 · 12/11/2026 20:20"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -457,6 +458,7 @@ if (!cfg.oilArc) { if (cfg.arcs[1] === "iat") cfg.arcs[1] = "oil"; cfg.oilArc = 
 const saveCfg = () => { try { localStorage.setItem("ej9cfg2", JSON.stringify(cfg)); } catch (e) {} };
 
 /* ---------- Geometría ---------- */
+const R_BAR = 211;
 const CX = 260, CY = 220, R_FACE = 165, R_IN = 112, A_START = 135, A_SPAN = 270, R_ARC = 212;
 let MAXRPM = 8000;
 const P = (r, a) => [CX + r * Math.cos(a * Math.PI / 180), CY + r * Math.sin(a * Math.PI / 180)];
@@ -510,17 +512,29 @@ function buildCells() {
   $("shop").innerHTML = SHOP.map((k, i) => cellHtml("s", i, k)).join("");
 }
 
-/* Iconos de los arcos (dibujados en un cuadro de 24×24) */
+/* Iconos de los arcos, al estilo de los testigos del cuadro (cuadro de 32×32). f: relleno, sin f: línea */
 const ICONS = {
-  water: ["M12 3v9", "M9.5 6h2", "M9.5 9h2", "M12 12a2.6 2.6 0 1 0 .01 0", "M3 20c1.5-1.2 3-1.2 4.5 0s3 1.2 4.5 0 3-1.2 4.5 0 3 1.2 4.5 0"],
-  oil:   ["M3 13h10l5-4 3 1.5-6 6.5H3z", "M7 13v-2h4v2", "M21 15.5c0 1.2-.8 2-1.6 2s-1.4-.8-1.4-2 1.5-3 1.5-3 1.5 1.8 1.5 3z"],
-  iat:   ["M15 3v9", "M15 12a2.6 2.6 0 1 0 .01 0", "M3 8h7", "M3 12h6", "M3 16h7"],
-  tps:   ["M8 21l8-15", "M13 5.5l6 3", "M6 21h6"],
-  mapm:  ["M3 7h18", "M6 7v11", "M12 7v11", "M18 7v11", "M4 18h4", "M10 18h4", "M16 18h4"],
-  maf:   ["M3 9h12a3 3 0 1 0-3-3", "M3 13h15a3 3 0 1 1-3 3", "M3 17h6"],
-  volt:  ["M4 8h16v11H4z", "M7 8V6h3v2", "M14 8V6h3v2", "M7 13h3", "M14 13h3", "M15.5 11.5v3"],
-  fuel:  ["M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16", "M3 21h14", "M7 8h6", "M15 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V8l-3-3"],
+  water: [["path", { f: 1, d: "M14 4.5a2 2 0 0 1 4 0v11.6a4.6 4.6 0 1 1-4 0z" }], ["path", { d: "M19.5 6.5h3.5M19.5 10h3.5M19.5 13.5h2.5" }],
+          ["path", { d: "M3 26c2.2-1.7 4.3-1.7 6.5 0s4.3 1.7 6.5 0 4.3-1.7 6.5 0 4.3 1.7 6.5 0M3 30.5c2.2-1.7 4.3-1.7 6.5 0s4.3 1.7 6.5 0 4.3-1.7 6.5 0 4.3 1.7 6.5 0" }]],
+  oil:   [["path", { f: 1, d: "M2.5 16.5H8l2.5-2.5h7.5l3 2 8.3-4 1.4 1.4-8.6 9.6H9.5a2 2 0 0 1-2-2v-2.5h-5z" }], ["circle", { f: 1, cx: 29.5, cy: 25.5, r: 1.7 }],
+          ["path", { f: 1, d: "M12 3.5a1.6 1.6 0 0 1 3.2 0v6.3a2.9 2.9 0 1 1-3.2 0z" }], ["path", { d: "M16.8 5h2.2M16.8 8h2.2" }]],
+  iat:   [["path", { f: 1, d: "M7 4.5a2 2 0 0 1 4 0v11.6a4.6 4.6 0 1 1-4 0z" }], ["path", { d: "M15 9h9.5a2.5 2.5 0 1 0-2.5-2.5M15 14h13M15 19h9.5a2.5 2.5 0 1 1-2.5 2.5" }]],
+  tps:   [["path", { d: "M5 6h14", sw: 2.4 }], ["path", { d: "M19 6 11 25", sw: 4.5 }], ["path", { d: "M5 27.5h22", sw: 2.4 }]],
+  mapm:  [["rect", { x: 3, y: 6, width: 26, height: 7, rx: 1.5 }], ["path", { d: "M7 13v9h4v-9M14 13v9h4v-9M21 13v9h4v-9" }], ["path", { d: "M3 27h26" }]],
+  maf:   [["path", { d: "M3 10h15a3.5 3.5 0 1 0-3.5-3.5M3 16h21M3 22h15a3.5 3.5 0 1 1-3.5 3.5" }], ["rect", { f: 1, x: 25, y: 12, width: 4, height: 8, rx: 1 }]],
+  volt:  [["rect", { x: 3, y: 9, width: 26, height: 18, rx: 2 }], ["rect", { f: 1, x: 7, y: 5, width: 5, height: 4 }], ["rect", { f: 1, x: 20, y: 5, width: 5, height: 4 }], ["path", { d: "M7 18h5M9.5 15.5v5M20 18h5" }]],
+  fuel:  [["rect", { x: 4, y: 4, width: 14, height: 25, rx: 2 }], ["rect", { f: 1, x: 7, y: 7, width: 8, height: 7, rx: 1 }], ["path", { d: "M2 29h18M18 13h3a2 2 0 0 1 2 2v8a2 2 0 0 0 4 0V11l-3.5-4" }]],
 };
+function drawIcon(k, cx, cy, size) {
+  const sc = size / 32, g = el("g", { transform: `translate(${(cx - size / 2).toFixed(1)} ${(cy - size / 2).toFixed(1)}) scale(${sc})`, fill: "none", stroke: "#d2d2d2", "stroke-width": 2.2, "stroke-linecap": "round", "stroke-linejoin": "round" });
+  ICONS[k].forEach(([tag, at]) => {
+    const { f, sw, ...rest } = at;
+    const e = el(tag, rest, g);
+    if (f) { e.setAttribute("fill", "#d2d2d2"); e.setAttribute("stroke", "none"); }
+    if (sw) e.setAttribute("stroke-width", sw);
+  });
+  return g;
+}
 
 /* Estilos de esfera */
 const THEMES = {
@@ -572,15 +586,14 @@ function build() {
   ARC_SLOTS.forEach((slot, i) => {
     const k = effKey(cfg.arcs[i]), g = SENSORS[k];
     const a = { ...slot, ...g };
-    // Barra estilo HonDash: contorno claro, interior negro y zona roja al final
-    const ins = 0.9 * Math.sign(a.a1 - a.a0);
+    // Barra abierta: línea fina de escala por fuera, barra de progreso dentro y zona roja al final
     const redFrom = k === "water" ? cfg.water : a.max - (a.max - a.min) * 0.12;
     const aRed = a.a0 + Math.max(0, Math.min(1, (redFrom - a.min) / (a.max - a.min))) * (a.a1 - a.a0);
-    el("path", { d: arc(R_ARC, a.a0, a.a1), class: "arcO" });
-    el("path", { d: arc(R_ARC, aRed, a.a1), class: "arcR" });
-    el("path", { d: arc(R_ARC, a.a0 + ins, a.a1 - ins), class: "trk" });
-    el("path", { d: arc(R_ARC, aRed, a.a1 - ins), class: "arcRi" });
+    el("path", { d: arc(R_ARC + 9, a.a0, aRed), class: "arcL" });
+    el("path", { d: arc(R_ARC + 9, aRed, a.a1), class: "arcR" });
+    el("path", { d: arc(R_BAR, a.a0, a.a1), class: "trk" });
     const fil = el("path", { d: "", class: "fil" });
+    [[a.a0, ""], [a.a1, " r"]].forEach(([ang, c]) => { const [x1, y1] = P(R_ARC - 7, ang), [x2, y2] = P(R_ARC + 12, ang); el("line", { x1, y1, x2, y2, class: "endT" + c }); });
     // Etiquetas de máximo y mínimo junto a los extremos
     const [mxX, mxY] = P(R_ARC, a.a1), [mnX, mnY] = P(R_ARC, a.a0);
     const anc = a.side < 0 ? "start" : "end", dx = a.side < 0 ? 15 : -15;
@@ -589,9 +602,10 @@ function build() {
     // Valor y nombre dentro del arco
     const mid = (a.a0 + a.a1) / 2, [vx, vy] = P(186, mid);
     const val = el("text", { x: vx, y: vy + (a.top ? 4 : 12), class: "dig", "font-size": 25 }, "-");
-    const [nx, ny] = P(238, mid);
+    const [nx, ny] = P(ICONS[k] ? 244 : 238, mid);
     arcTexts.push(val);
-    el("text", { x: nx, y: ny + 4, class: "lbl dim", "text-anchor": a.side < 0 ? "end" : "start", "font-size": 10, "letter-spacing": "1.5" }, a.s);
+    if (ICONS[k]) drawIcon(k, nx, ny, 30);   // testigo dibujado en vez del nombre
+    else el("text", { x: nx, y: ny + 4, class: "lbl dim", "text-anchor": a.side < 0 ? "end" : "start", "font-size": 10, "letter-spacing": "1.5" }, a.s);
     el("path", { d: arc(R_ARC - 10, a.a0, a.a1), class: "hit" }).addEventListener("click", () => openPicker("arc", i));
     R.arcs.push({ fil, val, a, k });
   });
@@ -655,10 +669,9 @@ function build() {
   nums.forEach(n => svg.appendChild(n)); // los números por encima de la aguja
 
   // Marcha y testigo de motor/OBD
-  R.gearBox = el("rect", { x: 8, y: 194, width: 44, height: 52, rx: 3, class: "box" });
+  R.gearBox = el("path", { d: "M10 211V196H50V211M10 229V244H50V229", class: "box" });
   if (learning) R.gearBox.style.stroke = "var(--amber)";
   R.gear = el("text", { x: 30, y: 221, class: "gtxt" }, "N");
-  el("text", { x: 30, y: 186, class: "lbl dim", "text-anchor": "middle", "font-size": 9, "letter-spacing": "1" }, "MARCHA");
   R.eng = el("g", { transform: "translate(472 204)" });
   el("path", { d: "M6 10h6V6h12v4h6l4 4h4v-4h4v18h-4v-4h-4v6H14l-4-4H6v-6H2v-6h4z", fill: "#3a3a3a" }, R.eng);
   R.obdTxt = el("text", { x: 492, y: 252, class: "lbl dim", "text-anchor": "middle", "font-size": 10 }, "OFF");
@@ -780,7 +793,7 @@ function anim(t) {
       o.cf = o.cf == null ? o.tf : o.cf + (o.tf - o.cf) * (1 - Math.exp(-dt / 140));
       if (Math.abs(o.cf - (o.drawn ?? -1)) > 0.0015) {
         o.drawn = o.cf;
-        o.fil.setAttribute("d", o.cf > 0.005 ? arc(R_ARC, o.a.a0, o.a.a0 + o.cf * (o.a.a1 - o.a.a0)) : "");
+        o.fil.setAttribute("d", o.cf > 0.005 ? arc(R_BAR, o.a.a0, o.a.a0 + o.cf * (o.a.a1 - o.a.a0)) : "");
       }
     }
   }
