@@ -415,7 +415,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v3.6 · 12/11/2026 20:30"; // se cambia con cada actualización
+const APP_VERSION = "v3.7 · 12/11/2026 20:25"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -564,9 +564,9 @@ function build() {
   const T = THEMES[cfg.theme] || THEMES.blanca;
   const E = N && T === THEMES.blanca ? { a: "#2e3336", b: "#464c50", tick: "#dcdcdc", num: "#0c0c0c", halo: "#a8a8a8", nsw: 1.6, glow: .08 } : { ...T, glow: N ? .08 : T.glow };
   const defs = el("defs", {});
-  const RH = R_FACE + 36, rg = el("radialGradient", { id: "halo", cx: CX, cy: CY, r: RH, gradientUnits: "userSpaceOnUse" }, defs);
+  const RH = R_FACE + 16, rg = el("radialGradient", { id: "halo", cx: CX, cy: CY, r: RH, gradientUnits: "userSpaceOnUse" }, defs);
   const hc = N ? "#9aa3a8" : "#fff", gl = N ? .35 : Math.min(1, E.glow * 1.8);
-  [[R_FACE - 2, 1], [R_FACE + 4, .75], [R_FACE + 12, .4], [R_FACE + 22, .14], [RH, 0]]
+  [[R_FACE - 2, 1], [R_FACE + 2, .7], [R_FACE + 6, .38], [R_FACE + 11, .12], [RH, 0]]
     .forEach(([r, op]) => el("stop", { offset: (r / RH).toFixed(3), "stop-color": hc, "stop-opacity": (op * gl).toFixed(3) }, rg));
   // brillo para aguja, anillo y luces
   const gf = el("filter", { id: "glow", x: "-50%", y: "-50%", width: "200%", height: "200%" }, defs);
@@ -630,7 +630,7 @@ function build() {
   });
 
   // Esfera
-  el("circle", { cx: CX, cy: CY, r: R_FACE + 36, fill: "url(#halo)" });
+  el("circle", { cx: CX, cy: CY, r: R_FACE + 16, fill: "url(#halo)" });
   if (E.carbon) el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#carbon)" });
   el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#face)" });
   el("path", { d: sector(R_IN + 14, R_FACE, rpmAngle(cfg.red), A_START + A_SPAN), fill: "url(#rz)" });
