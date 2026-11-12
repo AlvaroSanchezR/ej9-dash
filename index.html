@@ -426,7 +426,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v4.6 · 12/11/2026 21:35"; // se cambia con cada actualización
+const APP_VERSION = "v4.7 · 12/11/2026 21:40"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -738,7 +738,7 @@ const saveTank = () => { try { localStorage.setItem("ej9tank", JSON.stringify(ta
 setInterval(() => { if (connected) { saveTank(); saveOdo(); } }, 10000);
 
 /* Cuentakilómetros: km reales metidos a mano + lo recorrido con el adaptador conectado */
-let odo = { km: null, sent: null };
+let odo = { km: null, sent: null }, odoCar = false;
 try { Object.assign(odo, JSON.parse(localStorage.getItem("ej9odo") || "{}")); } catch (e) {}
 const saveOdo = () => { try { localStorage.setItem("ej9odo", JSON.stringify(odo)); } catch (e) {} };
 async function sendOdo(force) {
@@ -879,7 +879,7 @@ function setVal(k, v) {
       const dk = v * Math.min(2000, now - trip.last) / 3600000;
       trip.dist += dk * cfg.spdCorr;
       if (connected && tank.started) tank.km += dk * cfg.spdCorr;
-      if (connected && odo.km != null) odo.km += dk;
+      if (connected && odoCar && odo.km != null) odo.km += dk;
     }
     trip.last = now; trip.vmax = Math.max(trip.vmax, v);
     perfSample(v, now);
@@ -1144,7 +1144,11 @@ async function initElm() {
     for (const c of ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATAT2", "ATSP0"]) log(c + " → " + (await send(c, 4000)).replace(/\n/g, " "));
     const r = await send("0100", 12000); log("0100 → " + r.replace(/\n/g, " "));
     if (!/4100/.test(r.replace(/\s/g, ""))) throw new Error("La centralita no responde. ¿Contacto puesto?");
-    log("Protocolo: " + (await send("ATDPN")));
+    const dp = (await send("ATDPN")).replace(/[^0-9A-C]/gi, "").slice(-1).toUpperCase();
+    log("Protocolo: " + dp);
+    // El Civic EJ9 habla un protocolo antiguo (1–5: J1850 / ISO 9141 / KWP). Los coches con CAN (6–C) no suman km al widget
+    odoCar = /^[1-5]$/.test(dp);
+    log(odoCar ? "Coche con protocolo antiguo: los km suman al cuentakilómetros" : "Otro coche (CAN): los km no suman al cuentakilómetros del widget");
     stopDemo();
     if (cfg.lastConn !== via) { cfg.lastConn = via; saveCfg(); }
     connected = true; status("Conectado", "on"); $("connBtn").textContent = "Desconectar"; $("connBle").hidden = true;
