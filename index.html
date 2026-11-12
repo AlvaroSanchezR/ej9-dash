@@ -37,10 +37,10 @@ body{background:var(--bg);color:var(--fg);font-family:var(--ui);margin:0;
 .colR .cell .hd,.colR .cell .mx{text-align:right}
 .colR .cell .mn{left:auto;right:0}
 /* Telemetría estilo competición */
-.col .cell,.shop .cell{background:linear-gradient(180deg,#101010,#050505);border:1px solid #1f1f1f;border-radius:6px;padding:5px 8px 4px}
+.col .cell,.shop .cell{background:#070707;border:1px solid #191919;border-radius:6px;padding:5px 8px 4px}
 .cell canvas{border-radius:0 0 5px 5px}
-.cell .hd{font-family:var(--lab);font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:#cfcfcf}
-.cell .mx,.cell .mn{font-family:var(--lab);font-weight:500;color:#6d6d6d}
+.cell .hd{font-family:var(--ui);font-weight:500;color:#e6e6e6}
+.cell .mx,.cell .mn{font-family:var(--ui);font-weight:500;color:#777}
 .cell .mn{bottom:3px;left:8px} .colR .cell .mn{left:auto;right:8px}
 .cell .v{font-family:var(--race);font-weight:600;font-size:clamp(24px,4.8vw,44px);line-height:.85;letter-spacing:.01em;margin-top:4px}
 .cell.warn .v{color:var(--amber)} .cell.crit .v{color:var(--red)}
@@ -79,18 +79,18 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 
 /* SVG */
 .tick{stroke:var(--ink)} .tick.rz{stroke:#fff} .tick.mn{opacity:.55}
-.num{font-family:var(--race);font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke-width:7px;stroke-linejoin:round}
-.lbl{font-family:var(--lab);fill:var(--fg);font-weight:600}
+.num{font-family:var(--ui);font-weight:900;fill:var(--ink);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke-width:7px;stroke-linejoin:round}
+.lbl{font-family:var(--ui);fill:var(--fg);font-weight:500}
 .lbl.dim{fill:var(--dim)}
 .dig{font-family:var(--race);font-weight:600;fill:var(--fg);text-anchor:middle}
 .vtec{font-family:var(--race);font-weight:700;font-size:15px;letter-spacing:3px;fill:#2a2a2a;text-anchor:middle}
 .vtec.on{fill:var(--red)}
-.trk{fill:none;stroke:var(--track);stroke-width:15;stroke-dasharray:5 2.5}
-.fil{fill:none;stroke:var(--fg);stroke-width:15;stroke-dasharray:5 2.5}
+.trk{fill:none;stroke:var(--track);stroke-width:13}
+.fil{fill:none;stroke:var(--fg);stroke-width:13}
 .fil.warn{stroke:var(--amber)} .fil.crit{stroke:var(--red)}
-.cap{fill:none;stroke:var(--red);stroke-width:15}
-.box{fill:#0b0b0b;stroke:var(--red);stroke-width:2.5}
-.gtxt{font-family:var(--race);font-weight:600;fill:var(--fg);text-anchor:middle;dominant-baseline:central;font-size:50px}
+.cap{fill:none;stroke:var(--red);stroke-width:13}
+.box{fill:none;stroke:#cfcfcf;stroke-width:3}
+.gtxt{font-family:var(--race);font-weight:600;fill:var(--fg);text-anchor:middle;dominant-baseline:central;font-size:44px}
 .brand{font-family:var(--brand);font-weight:600;font-size:22px;fill:#8a8a8a;text-anchor:middle;letter-spacing:1px}
 .hit{fill:none;stroke:transparent;stroke-width:46;cursor:pointer}
 .cell{cursor:pointer}
@@ -410,7 +410,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v2.0 · 12/11/2026 20:10"; // se cambia con cada actualización
+const APP_VERSION = "v2.1 · 12/11/2026 19:50"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -525,8 +525,8 @@ function build() {
   const E = N && T === THEMES.blanca ? { a: "#1f1f1f", b: "#333", tick: "#dcdcdc", num: "#dcdcdc", halo: "#262626", glow: .08 } : { ...T, glow: N ? .08 : T.glow };
   const defs = el("defs", {});
   const rg = el("radialGradient", { id: "halo" }, defs);
-  el("stop", { offset: "82%", "stop-color": "#ff2a1a", "stop-opacity": String(E.glow * 0.7) }, rg);
-  el("stop", { offset: "100%", "stop-color": "#ff2a1a", "stop-opacity": "0" }, rg);
+  el("stop", { offset: "82%", "stop-color": "#fff", "stop-opacity": String(E.glow) }, rg);
+  el("stop", { offset: "100%", "stop-color": "#fff", "stop-opacity": "0" }, rg);
   // brillo para aguja, anillo y luces
   const gf = el("filter", { id: "glow", x: "-50%", y: "-50%", width: "200%", height: "200%" }, defs);
   el("feGaussianBlur", { stdDeviation: 2.2, result: "b" }, gf);
@@ -571,14 +571,13 @@ function build() {
   });
 
   // Esfera
-  el("circle", { cx: CX, cy: CY, r: R_FACE + 26, fill: "url(#halo)" });
+  el("circle", { cx: CX, cy: CY, r: R_FACE + 22, fill: "url(#halo)" });
   el("circle", { cx: CX, cy: CY, r: R_FACE + 8, fill: "url(#bezel)" });
-  el("circle", { cx: CX, cy: CY, r: R_FACE + 8, fill: "none", stroke: "#e3170a", "stroke-width": 1.5, opacity: .9 });
   if (E.carbon) el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#carbon)" });
   el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#face)" });
   el("path", { d: sector(R_IN + 14, R_FACE, rpmAngle(cfg.red), A_START + A_SPAN), fill: "url(#rz)" });
   el("circle", { cx: CX, cy: CY, r: R_IN, fill: "var(--bg)" });
-  el("circle", { cx: CX, cy: CY, r: R_IN, fill: "none", stroke: "#e3170a", "stroke-width": 2, filter: "url(#glow)" });
+  el("circle", { cx: CX, cy: CY, r: R_IN, fill: "none", stroke: "#555", "stroke-width": 2 });
   arcTexts.forEach(t => svg.appendChild(t)); // nombres y valores de los arcos por encima de la esfera
 
   const nums = [];
@@ -587,7 +586,7 @@ function build() {
     const r0 = major ? R_FACE - 24 : half ? R_FACE - 16 : R_FACE - 10;
     const [x1, y1] = P(r0, a), [x2, y2] = P(R_FACE - 2, a);
     el("line", { x1, y1, x2, y2, class: "tick" + (v > cfg.red ? " rz" : "") + (major || half ? "" : " mn"), style: v > cfg.red ? "" : "stroke:" + E.tick, "stroke-width": major ? 4 : half ? 2.5 : 1.5 });
-    if (major) { const [tx, ty] = P(R_FACE - 42, a); nums.push(el("text", { x: tx, y: ty + 2, class: "num", "font-size": 40, style: "fill:" + (v > cfg.red && E.num === "#e3170a" ? "#fff" : E.num), stroke: v > cfg.red ? (N ? "#5e110b" : "#e3170a") : E.halo }, v / 1000)); }
+    if (major) { const [tx, ty] = P(R_FACE - 42, a); nums.push(el("text", { x: tx, y: ty, class: "num", "font-size": 30, style: "fill:" + (v > cfg.red && E.num === "#e3170a" ? "#fff" : E.num), stroke: v > cfg.red ? (N ? "#5e110b" : "#e3170a") : E.halo }, v / 1000)); }
   }
   el("text", { x: CX, y: CY + 146, class: "brand" }, cfg.name || "");
 
@@ -603,7 +602,7 @@ function build() {
   el("text", { x: CX, y: ry + 10, class: "lbl", "text-anchor": "middle", "font-size": 8, "letter-spacing": "2" }, "RPM");
   R.spd = el("text", { x: CX, y: 238, class: "dig", "font-size": 70 }, "0");
   el("text", { x: CX, y: 249, class: "lbl", "text-anchor": "middle", "font-size": 8, "letter-spacing": "2" }, "KM/H");
-  el("line", { x1: CX - 78, y1: 254, x2: CX + 78, y2: 254, stroke: "#e3170a", "stroke-width": 1.5 });
+  el("line", { x1: CX - 78, y1: 254, x2: CX + 78, y2: 254, stroke: "#e6e6e6", "stroke-width": 1.2 });
   R.trip = {};
   [["dist", "Viaje"], ["dur", "Duración"], ["vavg", "Vel. media"], ["cons", "Consumo medio"], ["lit", "Gastado"], ["cost", "Coste"]].forEach(([k, n], i) => {
     const y = 265 + i * 10.8;
@@ -612,7 +611,7 @@ function build() {
   });
 
   // Aguja
-  R.needle = el("g", { filter: "url(#glow)" });
+  R.needle = el("g", {});
   el("polygon", { points: `${CX + R_IN + 2},${CY - 3.5} ${CX + R_FACE - 4},${CY - 1} ${CX + R_FACE - 4},${CY + 1} ${CX + R_IN + 2},${CY + 3.5}`, fill: "var(--red)" }, R.needle);
   el("line", { x1: CX + R_IN + 8, y1: CY, x2: CX + R_FACE - 10, y2: CY, stroke: "#fff", "stroke-width": .8, opacity: .85 }, R.needle);
   nums.forEach(n => svg.appendChild(n)); // los números por encima de la aguja
@@ -849,11 +848,11 @@ function drawChart(c, k) {
   data.forEach((v, i) => ctx.lineTo(x0 + i * step, y(v)));
   ctx.lineTo(w, h); ctx.closePath();
   const gr = ctx.createLinearGradient(0, 0, 0, h);
-  gr.addColorStop(0, `rgba(${col},.45)`); gr.addColorStop(1, `rgba(${col},0)`);
+  gr.addColorStop(0, `rgba(${col},.55)`); gr.addColorStop(1, `rgba(${col},.08)`);
   ctx.fillStyle = gr; ctx.fill();
   ctx.beginPath(); data.forEach((v, i) => i ? ctx.lineTo(x0 + i * step, y(v)) : ctx.moveTo(x0, y(v)));
-  ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = 2 * dpr; ctx.lineJoin = "round";
-  ctx.shadowColor = `rgba(${col},.8)`; ctx.shadowBlur = 6 * dpr; ctx.stroke(); ctx.shadowBlur = 0;
+  ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = 1.6 * dpr; ctx.lineJoin = "round";
+  ctx.stroke();
   // punto del valor actual
   const ly = y(data[data.length - 1]);
   ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(w - 3 * dpr, ly, 2.6 * dpr, 0, Math.PI * 2); ctx.fill();
