@@ -410,7 +410,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v2.2 · 12/11/2026 19:48"; // se cambia con cada actualización
+const APP_VERSION = "v2.3 · 12/11/2026 20:05"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -560,12 +560,15 @@ function build() {
     // Etiquetas de máximo y mínimo junto a los extremos
     const [mxX, mxY] = P(R_ARC, a.a1), [mnX, mnY] = P(R_ARC, a.a0);
     const anc = a.side < 0 ? "start" : "end", dx = a.side < 0 ? 12 : -12;
-    el("text", { x: mxX + dx, y: mxY + 6, class: "lbl", "text-anchor": anc, "font-size": 15 }, a.max + (a.top ? " " + a.u : ""));
-    el("text", { x: mnX + dx, y: mnY + 6, class: "lbl", "text-anchor": anc, "font-size": 15 }, a.min + (a.top ? "" : " " + a.u));
+    const unit = a.u === "°C" ? "°" : " " + a.u;
+    el("text", { x: mxX + dx, y: mxY + 5, class: "lbl dim", "text-anchor": anc, "font-size": 13 }, a.max + (a.top ? unit : ""));
+    el("text", { x: mnX + dx, y: mnY + 5, class: "lbl dim", "text-anchor": anc, "font-size": 13 }, a.min + (a.top ? "" : unit));
     // Valor y nombre dentro del arco
     const mid = (a.a0 + a.a1) / 2, [vx, vy] = P(186, mid);
     const val = el("text", { x: vx, y: vy + (a.top ? 4 : 12), class: "dig", "font-size": 25 }, "-");
-    arcTexts.push(val, el("text", { x: vx + (a.side < 0 ? 8 : -8), y: vy + (a.top ? 18 : -14), class: "lbl dim", "text-anchor": a.side < 0 ? "end" : "start", "font-size": 10, "letter-spacing": "1" }, a.s));
+    const [nx, ny] = P(238, mid);
+    arcTexts.push(val);
+    el("text", { x: nx, y: ny + 4, class: "lbl dim", "text-anchor": a.side < 0 ? "end" : "start", "font-size": 10, "letter-spacing": "1.5" }, a.s);
     el("path", { d: arc(R_ARC - 10, a.a0, a.a1), class: "hit" }).addEventListener("click", () => openPicker("arc", i));
     R.arcs.push({ fil, val, a, k });
   });
@@ -604,10 +607,10 @@ function build() {
   el("text", { x: CX, y: 249, class: "lbl", "text-anchor": "middle", "font-size": 8, "letter-spacing": "2" }, "KM/H");
   el("line", { x1: CX - 78, y1: 254, x2: CX + 78, y2: 254, stroke: "#e6e6e6", "stroke-width": 1.2 });
   R.trip = {};
-  [["dist", "Viaje"], ["dur", "Duración"], ["vavg", "Vel. media"], ["cons", "Consumo medio"], ["lit", "Gastado"], ["cost", "Coste"]].forEach(([k, n], i) => {
-    const y = 265 + i * 10.8;
-    el("text", { x: CX - 4, y, class: "lbl", "text-anchor": "end", "font-size": 10 }, n);
-    R.trip[k] = el("text", { x: CX + 4, y, class: "lbl", "font-size": 10, "font-weight": 700 }, "-");
+  [["dist", "Viaje"], ["dur", "Tiempo"], ["vavg", "Vel. media"], ["cons", "Consumo"], ["lit", "Gastado"], ["cost", "Coste"]].forEach(([k, n], i) => {
+    const y = 266 + i * 10.4;
+    el("text", { x: CX - 5, y, class: "lbl dim", "text-anchor": "end", "font-size": 9.5 }, n);
+    R.trip[k] = el("text", { x: CX + 5, y, class: "lbl", "font-size": 9.5, "font-weight": 700 }, "-");
   });
 
   // Aguja
@@ -620,6 +623,7 @@ function build() {
   R.gearBox = el("rect", { x: 8, y: 194, width: 44, height: 52, rx: 3, class: "box" });
   if (learning) R.gearBox.style.stroke = "var(--amber)";
   R.gear = el("text", { x: 30, y: 221, class: "gtxt" }, "N");
+  el("text", { x: 30, y: 186, class: "lbl dim", "text-anchor": "middle", "font-size": 9, "letter-spacing": "1" }, "MARCHA");
   R.eng = el("g", { transform: "translate(472 204)" });
   el("path", { d: "M6 10h6V6h12v4h6l4 4h4v-4h4v18h-4v-4h-4v6H14l-4-4H6v-6H2v-6h4z", fill: "#3a3a3a" }, R.eng);
   R.obdTxt = el("text", { x: 492, y: 252, class: "lbl dim", "text-anchor": "middle", "font-size": 10 }, "OFF");
@@ -735,6 +739,16 @@ function anim(t) {
       });
     }
   }
+  if (R.arcs && cfg.view === "full") {
+    for (const o of R.arcs) {
+      if (o.tf == null) { if (o.drawn !== -1) { o.fil.setAttribute("d", ""); o.drawn = -1; o.cf = null; } continue; }
+      o.cf = o.cf == null ? o.tf : o.cf + (o.tf - o.cf) * (1 - Math.exp(-dt / 140));
+      if (Math.abs(o.cf - (o.drawn ?? -1)) > 0.0015) {
+        o.drawn = o.cf;
+        o.fil.setAttribute("d", o.cf > 0.005 ? arc(R_ARC, o.a.a0, o.a.a0 + o.cf * (o.a.a1 - o.a.a0)) : "");
+      }
+    }
+  }
   if (cfg.view === "street") {
     const lit = Math.round(Math.min(dispRpm, MAXRPM) / MAXRPM * SEGS.length);
     if (lit !== AC.lit) {
@@ -844,13 +858,14 @@ function drawChart(c, k) {
   if (data.length < 2) return;
   const step = w / (HLEN - 1), x0 = w - (data.length - 1) * step;
   const st = stateOf(k, data[data.length - 1]), col = st === "crit" ? "255,42,26" : st === "warn" ? "255,176,32" : "255,59,46";
-  ctx.beginPath(); ctx.moveTo(x0, h);
-  data.forEach((v, i) => ctx.lineTo(x0 + i * step, y(v)));
+  const pts = data.map((v, i) => [x0 + i * step, y(v)]);
+  const curve = () => { ctx.lineTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length - 1; i++) ctx.quadraticCurveTo(pts[i][0], pts[i][1], (pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2); ctx.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]); };
+  ctx.beginPath(); ctx.moveTo(x0, h); curve();
   ctx.lineTo(w, h); ctx.closePath();
   const gr = ctx.createLinearGradient(0, 0, 0, h);
   gr.addColorStop(0, `rgba(${col},.55)`); gr.addColorStop(1, `rgba(${col},.08)`);
   ctx.fillStyle = gr; ctx.fill();
-  ctx.beginPath(); data.forEach((v, i) => i ? ctx.lineTo(x0 + i * step, y(v)) : ctx.moveTo(x0, y(v)));
+  ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); curve();
   ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = 1.6 * dpr; ctx.lineJoin = "round";
   ctx.stroke();
   // punto del valor actual
@@ -867,9 +882,9 @@ function render() {
   if (cfg.view === "full") {
     for (const { fil, val, a, k } of R.arcs) {
       const v = V[k];
-      if (v == null) { fil.setAttribute("d", ""); val.textContent = "-"; continue; }
-      const f = Math.max(0, Math.min(1, (v - a.min) / (a.max - a.min)));
-      fil.setAttribute("d", f > 0.005 ? arc(R_ARC, a.a0, a.a0 + f * (a.a1 - a.a0)) : "");
+      const o = R.arcs.find(x => x.fil === fil);
+      if (v == null) { o.tf = null; val.textContent = "-"; continue; }
+      o.tf = Math.max(0, Math.min(1, (v - a.min) / (a.max - a.min)));
       const st = stateOf(k, v);
       fil.setAttribute("class", "fil " + st);
       val.textContent = v.toFixed(a.d);
