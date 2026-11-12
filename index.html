@@ -426,7 +426,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v4.5 · 12/11/2026 21:25"; // se cambia con cada actualización
+const APP_VERSION = "v4.6 · 12/11/2026 21:35"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -751,7 +751,16 @@ async function sendOdo(force) {
     return true;
   } catch (e) { log("No se pudieron enviar los km: " + e.message); return false; }
 }
-setInterval(() => { if (connected && odo.km != null && (odo.sent == null || odo.km - odo.sent >= 2)) sendOdo(); }, 15000);
+setInterval(() => { if (connected) saveOdo(); if (connected && odo.km != null && (odo.sent == null || odo.km - odo.sent >= 2)) sendOdo(); }, 15000);
+// Al bloquear la pantalla, cambiar de app o cerrar Brave: se guardan los km y se mandan al widget aunque la página se congele
+function beaconOdo() {
+  saveOdo(); saveTank();
+  if (!cfg.hook || odo.km == null || (odo.sent != null && odo.km - odo.sent < 0.05) || !navigator.sendBeacon) return;
+  const body = JSON.stringify({ km: Math.round(odo.km), viaje_km: +trip.dist.toFixed(2), viaje_l: +(trip.lraw * cfg.fcal).toFixed(2), coche: cfg.name, fecha: new Date().toISOString() });
+  if (navigator.sendBeacon(cfg.hook, new Blob([body], { type: "text/plain" }))) { odo.sent = odo.km; saveOdo(); log("Km enviados al widget al salir: " + Math.round(odo.km)); }
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") beaconOdo(); });
+addEventListener("pagehide", beaconOdo);
 
 /* Consumo estimado por densidad de aire (MAP + temperatura + rpm + cilindrada), o por caudalímetro si lo hay */
 const VE = 0.85, AFR = 14.7, DENS = 740; // llenado medio, mezcla estequiométrica, g/L de gasolina
