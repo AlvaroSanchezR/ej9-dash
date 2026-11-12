@@ -78,7 +78,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 .confirm button{flex:1}
 
 /* SVG */
-.tick{stroke:var(--ink)} .tick.rz{stroke:#fff} .tick.mn{opacity:.55}
+.tick{stroke:var(--ink)} .tick.rz{stroke:#fff} .tick.mn{opacity:.75}
 .num{font-family:var(--race);font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke-width:7px;stroke-linejoin:round}
 .lbl{font-family:var(--lab);fill:var(--fg);font-weight:500}
 .lbl.dim{fill:var(--dim)}
@@ -87,10 +87,10 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 .vtec.on{fill:var(--red)}
 .arcL{fill:none;stroke:#7a7a7a;stroke-width:2.5}
 .arcR{fill:none;stroke:#e3170a;stroke-width:3.5}
-.trk{fill:none;stroke:#1a1a1a;stroke-width:11}
+.trk{fill:none;stroke:#2c2c2c;stroke-width:13}
 .endT{stroke:#8a8a8a;stroke-width:3.5;stroke-linecap:butt}
 .endT.r{stroke:#e3170a;stroke-width:3.5}
-.fil{fill:none;stroke:var(--fg);stroke-width:11}
+.fil{fill:none;stroke:var(--fg);stroke-width:13}
 .fil.warn{stroke:var(--amber)} .fil.crit{stroke:var(--red)}
 .cap{fill:none;stroke:var(--red);stroke-width:13}
 .box{fill:none;stroke:#bdbdbd;stroke-width:2}
@@ -415,7 +415,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v2.9 · 12/11/2026 20:20"; // se cambia con cada actualización
+const APP_VERSION = "v3.0 · 12/11/2026 20:30"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -459,7 +459,7 @@ const saveCfg = () => { try { localStorage.setItem("ej9cfg2", JSON.stringify(cfg
 
 /* ---------- Geometría ---------- */
 const R_BAR = 211;
-const CX = 260, CY = 220, R_FACE = 165, R_IN = 112, A_START = 135, A_SPAN = 270, R_ARC = 212;
+const CX = 260, CY = 220, R_FACE = 165, R_IN = 120, A_START = 135, A_SPAN = 270, R_ARC = 212;
 let MAXRPM = 8000;
 const P = (r, a) => [CX + r * Math.cos(a * Math.PI / 180), CY + r * Math.sin(a * Math.PI / 180)];
 function arc(r, a1, a2) {
@@ -634,10 +634,10 @@ function build() {
   const nums = [];
   for (let v = 0; v <= MAXRPM; v += 100) {
     const a = rpmAngle(v), major = v % 1000 === 0, half = v % 500 === 0;
-    const r0 = major ? R_FACE - 24 : half ? R_FACE - 16 : R_FACE - 10;
+    const r0 = major ? R_FACE - 21 : half ? R_FACE - 13 : R_FACE - 8;
     const [x1, y1] = P(r0, a), [x2, y2] = P(R_FACE - 2, a);
-    el("line", { x1, y1, x2, y2, class: "tick" + (v > cfg.red ? " rz" : "") + (major || half ? "" : " mn"), style: v > cfg.red ? "" : "stroke:" + E.tick, "stroke-width": major ? 4 : half ? 2.5 : 1.5 });
-    if (major) { const [tx, ty] = P(R_FACE - 42, a); nums.push(el("text", { x: tx, y: ty, class: "num", "font-size": 30, style: "fill:" + (v > cfg.red && E.num === "#e3170a" ? "#fff" : E.num), stroke: v > cfg.red ? (N ? "#5e110b" : "#e3170a") : E.halo }, v / 1000)); }
+    el("line", { x1, y1, x2, y2, class: "tick" + (v > cfg.red ? " rz" : "") + (major || half ? "" : " mn"), style: v > cfg.red ? "" : "stroke:" + E.tick, "stroke-width": major ? 4.5 : half ? 3.2 : 2.4 });
+    if (major) { const [tx, ty] = P(R_FACE - 35, a); nums.push(el("text", { x: tx, y: ty, class: "num", "font-size": 30, style: "fill:" + (v > cfg.red && E.num === "#e3170a" ? "#fff" : E.num), stroke: v > cfg.red ? (N ? "#5e110b" : "#e3170a") : E.halo }, v / 1000)); }
   }
   el("text", { x: CX, y: CY + 146, class: "brand" }, cfg.name || "");
 
@@ -645,31 +645,37 @@ function build() {
   // Luces de cambio (verde, ámbar y rojo) arriba del círculo central
   R.leds = [];
   const LEDC = ["#2bd96b", "#2bd96b", "#2bd96b", "#2bd96b", "#ffb020", "#ffb020", "#ffb020", "#ffb020", "#ff2a1a", "#ff2a1a", "#ff2a1a"];
-  LEDC.forEach((c, i) => { const [lx, ly] = P(104, 245 + i * 5); R.leds.push(el("circle", { cx: lx, cy: ly, r: 4.2, fill: "#161616", stroke: "#2b2b2b", "stroke-width": 1, "data-c": c })); });
-  const vOn = cfg.vtec > 0, ry = vOn ? 171 : 166;   // el rótulo VTEC solo sale si el motor lo tiene
-  R.vtec = el("text", { x: CX, y: 143, class: "vtec" }, "VTEC");
+  LEDC.forEach((c, i) => { const [lx, ly] = P(111, 246 + i * 4.8); R.leds.push(el("circle", { cx: lx, cy: ly, r: 4.2, fill: "#161616", stroke: "#2b2b2b", "stroke-width": 1, "data-c": c })); });
+  const vOn = cfg.vtec > 0, ry = vOn ? 173 : 167;   // el rótulo VTEC solo sale si el motor lo tiene
+  R.vtec = el("text", { x: CX, y: 141, class: "vtec" }, "VTEC");
   if (!vOn) R.vtec.setAttribute("display", "none");
-  R.rpm = el("text", { x: CX, y: ry, class: "dig", "font-size": 34 }, "0");
-  el("text", { x: CX, y: ry + 10, class: "lbl", "text-anchor": "middle", "font-size": 8, "letter-spacing": "2" }, "RPM");
-  R.spd = el("text", { x: CX, y: 238, class: "dig", "font-size": 70 }, "0");
-  el("text", { x: CX, y: 249, class: "lbl", "text-anchor": "middle", "font-size": 8, "letter-spacing": "2" }, "KM/H");
-  el("line", { x1: CX - 78, y1: 254, x2: CX + 78, y2: 254, stroke: "#e6e6e6", "stroke-width": 1.2 });
-  R.trip = {};
+  R.rpm = el("text", { x: CX, y: ry, class: "dig", "font-size": 38 }, "0");
+  el("text", { x: CX, y: ry + 12, class: "lbl", "text-anchor": "middle", "font-size": 11 }, "rpm");
+  R.spd = el("text", { x: CX, y: 247, class: "dig", "font-size": 82 }, "0");
+  el("text", { x: CX, y: 259, class: "lbl", "text-anchor": "middle", "font-size": 11 }, "km/h");
+  el("line", { x1: CX - 84, y1: 264, x2: CX + 84, y2: 264, stroke: "#e6e6e6", "stroke-width": 1 });
+  R.trip = {}; R.tripU = {};
   R.tripG = el("g", {});
-  [["dist", "Viaje"], ["dur", "Tiempo"], ["vavg", "Vel. media"], ["cons", "Consumo"], ["lit", "Gastado"], ["cost", "Coste"]].forEach(([k, n], i) => {
-    const y = 266 + i * 10.4;
-    const lb = el("text", { x: CX - 5, y, class: "lbl dim", "text-anchor": "end", "font-size": 9.5 }, n, R.tripG);
-    if (k === "lit") R.litLbl = lb;
-    R.trip[k] = el("text", { x: CX + 5, y, class: "lbl", "font-size": 9.5, "font-weight": 700 }, "-", R.tripG);
+  el("text", { x: CX, y: 277, class: "lbl", "text-anchor": "middle", "font-size": 10.5, "font-weight": 700 }, "Viaje", R.tripG);
+  [["cons", "Consumo medio", "L/100"], ["dist", "Distancia", "km"], ["cost", "Coste", "€"]].forEach(([k, n, u], i) => {
+    const y = 293 + i * 15;
+    const lb = el("text", { x: CX - 6, y, class: "lbl", "text-anchor": "end", "font-size": 10.5 }, n, R.tripG);
+    if (k === "cost") R.costLbl = lb;
+    const t = el("text", { x: CX + 4, y, class: "lbl", "font-size": 10.5 }, R.tripG);
+    R.trip[k] = el("tspan", { class: "dig", "font-size": 17, style: "text-anchor:start" }, "-", t);
+    R.tripU[k] = el("tspan", { dx: 3 }, u, t);
   });
+  // datos del viaje que ya no se enseñan en el reloj (siguen calculándose)
+  ["dur", "vavg", "lit"].forEach(k => R.trip[k] = document.createElementNS(NS, "text"));
+  R.litLbl = document.createElementNS(NS, "text");
 
   R.brkG = el("g", { display: "none" });
-  el("text", { x: CX, y: 266, class: "lbl", "text-anchor": "middle", "font-size": 9.5, "font-weight": 700 }, "Frenada desde 100 km/h", R.brkG);
+  el("text", { x: CX, y: 277, class: "lbl", "text-anchor": "middle", "font-size": 10.5, "font-weight": 700 }, "Frenada desde 100 km/h", R.brkG);
   R.brk = {};
   [["d", "Distancia"], ["t", "Tiempo"], ["avg", "Media"], ["max", "Máxima"]].forEach(([k, n], i) => {
-    const y = 278 + i * 10.4;
-    el("text", { x: CX - 5, y, class: "lbl dim", "text-anchor": "end", "font-size": 9.5 }, n, R.brkG);
-    R.brk[k] = el("text", { x: CX + 5, y, class: "lbl", "font-size": 9.5, "font-weight": 700 }, "-", R.brkG);
+    const y = 290 + i * 11.5;
+    el("text", { x: CX - 6, y, class: "lbl", "text-anchor": "end", "font-size": 10.5 }, n, R.brkG);
+    R.brk[k] = el("text", { x: CX + 4, y, class: "lbl", "font-size": 11, "font-weight": 700 }, "-", R.brkG);
   });
   if (brkShowUntil > performance.now()) showBrake();
 
@@ -964,16 +970,19 @@ function render() {
   }
   const dur = trip.t0 ? (trip.last || performance.now()) - trip.t0 : 0;
   const litres = trip.lraw * cfg.fcal;
-  R.trip.dist.textContent = trip.dist.toFixed(2) + " km";
+  R.trip.dist.textContent = trip.dist.toFixed(trip.dist < 100 ? 2 : 1);
   R.trip.dur.textContent = fmtDur(dur);
   R.trip.vavg.textContent = dur > 5000 ? (trip.dist / (dur / 3600000)).toFixed(1) + " km/h" : "-";
-  R.trip.cons.textContent = trip.dist > 0.2 ? (litres / trip.dist * 100).toFixed(1) + " L/100" : "-";
+  R.trip.cons.textContent = trip.dist > 0.2 ? (litres / trip.dist * 100).toFixed(1) : "-";
   if (V.flvl != null) {   // si el coche da el nivel de gasolina: litros que quedan y autonomía
     const left = V.flvl / 100 * cfg.tankL, avg = trip.dist > 3 ? litres / trip.dist * 100 : null;
     R.litLbl.textContent = "Depósito";
     R.trip.lit.textContent = left.toFixed(0) + " L" + (avg && avg > 1 ? " · " + Math.round(left / avg * 100) + " km" : "");
   } else { R.litLbl.textContent = "Gastado"; R.trip.lit.textContent = litres.toFixed(2) + " L"; }
-  R.trip.cost.textContent = (litres * cfg.price).toFixed(2) + " €";
+  const avgC = trip.dist > 3 ? litres / trip.dist * 100 : null;
+  if (V.flvl != null && avgC > 1) {   // con nivel de gasolina, la última fila pasa a ser la autonomía
+    R.costLbl.textContent = "Autonomía"; R.trip.cost.textContent = Math.round(V.flvl / 100 * cfg.tankL / avgC * 100); R.tripU.cost.textContent = "km";
+  } else { R.costLbl.textContent = "Coste"; R.trip.cost.textContent = (litres * cfg.price).toFixed(2); R.tripU.cost.textContent = "€"; }
 }
 function resetTrip() { trip.dist = 0; trip.t0 = 0; trip.last = 0; trip.vmax = 0; trip.lraw = 0; fuelT = 0; MAXV.rpm = 0; render(); }
 window.addEventListener("resize", () => { if (!dirty) { dirty = true; requestAnimationFrame(render); } });
