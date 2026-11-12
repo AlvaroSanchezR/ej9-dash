@@ -415,7 +415,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v3.2 · 12/11/2026 20:25"; // se cambia con cada actualización
+const APP_VERSION = "v3.3 · 12/11/2026 20:20"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -548,7 +548,7 @@ const THEMES = {
   blanca:  { n: "Blanca (HonDash)",        a: "#c9c9c9", b: "#f6f6f6", tick: "#111",    num: "#111",    halo: "#d4d4d4", glow: .5 },
   negra:   { n: "Negra con números rojos", a: "#0b0b0b", b: "#222",    tick: "#e8e8e8", num: "#e3170a", halo: "#141414", glow: .12 },
   azul:    { n: "Azul años 90",            a: "#0b2563", b: "#1f56c4", tick: "#fff",    num: "#fff",    halo: "#15408f", glow: .25 },
-  gris:    { n: "Gris grafito",            a: "#3c4449", b: "#545d63", tick: "#e8eaeb", num: "#f4f5f6", halo: "#3f474c", glow: .22 },
+  gris:    { n: "Gris grafito",            a: "#3c4449", b: "#545d63", tick: "#e8eaeb", num: "#14181b", halo: "#c9ced1", nsw: 1.6, glow: .22 },
   carbono: { n: "Carbono",                 a: "#000",    b: "#3a3a3a", tick: "#f0f0f0", num: "#f0f0f0", halo: "#1b1b1b", glow: .15, carbon: true },
 };
 
@@ -562,7 +562,7 @@ function build() {
   SENSORS.rpm.max = MAXRPM;
   const N = nightNow;
   const T = THEMES[cfg.theme] || THEMES.blanca;
-  const E = N && T === THEMES.blanca ? { a: "#1f1f1f", b: "#333", tick: "#dcdcdc", num: "#dcdcdc", halo: "#262626", glow: .08 } : { ...T, glow: N ? .08 : T.glow };
+  const E = N && T === THEMES.blanca ? { a: "#2e3336", b: "#464c50", tick: "#dcdcdc", num: "#0c0c0c", halo: "#a8a8a8", nsw: 1.6, glow: .08 } : { ...T, glow: N ? .08 : T.glow };
   const defs = el("defs", {});
   const rg = el("radialGradient", { id: "halo" }, defs);
   el("stop", { offset: "82%", "stop-color": "#fff", "stop-opacity": String(E.glow) }, rg);
@@ -644,7 +644,7 @@ function build() {
     const r0 = major ? R_FACE - 21 : half ? R_FACE - 13 : R_FACE - 8;
     const [x1, y1] = P(r0, a), [x2, y2] = P(R_FACE - 2, a);
     el("line", { x1, y1, x2, y2, class: "tick" + (v > cfg.red ? " rz" : "") + (major || half ? "" : " mn"), style: v > cfg.red ? "" : "stroke:" + E.tick, "stroke-width": major ? 4.5 : half ? 3.2 : 2.4 });
-    if (major) { const [tx, ty] = P(R_FACE - 35, a); nums.push(el("text", { x: tx, y: ty, class: "num", "font-size": 30, style: "fill:" + (v > cfg.red && E.num === "#e3170a" ? "#fff" : E.num), stroke: v > cfg.red ? (N ? "#5e110b" : "#e3170a") : E.halo }, v / 1000)); }
+    if (major) { const [tx, ty] = P(R_FACE - 35, a); nums.push(el("text", { x: tx, y: ty, class: "num", "font-size": 30, style: "fill:" + (v > cfg.red && E.num === "#e3170a" ? "#fff" : E.num) + (E.nsw ? `;stroke-width:${E.nsw}px` : ""), stroke: v > cfg.red ? (E.nsw ? "#ff4a3d" : N ? "#5e110b" : "#e3170a") : E.halo }, v / 1000)); }
   }
   el("text", { x: CX, y: CY + 146, class: "brand" }, cfg.name || "");
 
