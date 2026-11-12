@@ -410,7 +410,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v2.3 · 12/11/2026 20:05"; // se cambia con cada actualización
+const APP_VERSION = "v2.4 · 12/11/2026 20:15"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -463,7 +463,7 @@ function sector(r0, r1, a1, a2) {
   return `M${x1} ${y1}A${r1} ${r1} 0 ${l} 1 ${x2} ${y2}L${x3} ${y3}A${r0} ${r0} 0 ${l} 0 ${x4} ${y4}Z`;
 }
 function el(tag, attrs, parent, text) {
-  if (typeof parent === "string" || typeof parent === "number") { text = parent; parent = null; }
+  if (typeof parent === "string" || typeof parent === "number") { const t = parent; parent = text instanceof Element ? text : null; text = t; }
   const e = document.createElementNS(NS, tag);
   for (const k in attrs) e.setAttribute(k, attrs[k]);
   if (text != null) e.textContent = text;
@@ -503,6 +503,18 @@ function buildCells() {
   $("colR").innerHTML = cellKeys().slice(3, 6).map((k, i) => cellHtml("m", i + 3, k)).join("");
   $("shop").innerHTML = SHOP.map((k, i) => cellHtml("s", i, k)).join("");
 }
+
+/* Iconos de los arcos (dibujados en un cuadro de 24×24) */
+const ICONS = {
+  water: ["M12 3v9", "M9.5 6h2", "M9.5 9h2", "M12 12a2.6 2.6 0 1 0 .01 0", "M3 20c1.5-1.2 3-1.2 4.5 0s3 1.2 4.5 0 3-1.2 4.5 0 3 1.2 4.5 0"],
+  oil:   ["M3 13h10l5-4 3 1.5-6 6.5H3z", "M7 13v-2h4v2", "M21 15.5c0 1.2-.8 2-1.6 2s-1.4-.8-1.4-2 1.5-3 1.5-3 1.5 1.8 1.5 3z"],
+  iat:   ["M15 3v9", "M15 12a2.6 2.6 0 1 0 .01 0", "M3 8h7", "M3 12h6", "M3 16h7"],
+  tps:   ["M8 21l8-15", "M13 5.5l6 3", "M6 21h6"],
+  mapm:  ["M3 7h18", "M6 7v11", "M12 7v11", "M18 7v11", "M4 18h4", "M10 18h4", "M16 18h4"],
+  maf:   ["M3 9h12a3 3 0 1 0-3-3", "M3 13h15a3 3 0 1 1-3 3", "M3 17h6"],
+  volt:  ["M4 8h16v11H4z", "M7 8V6h3v2", "M14 8V6h3v2", "M7 13h3", "M14 13h3", "M15.5 11.5v3"],
+  fuel:  ["M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16", "M3 21h14", "M7 8h6", "M15 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V8l-3-3"],
+};
 
 /* Estilos de esfera */
 const THEMES = {
@@ -566,9 +578,13 @@ function build() {
     // Valor y nombre dentro del arco
     const mid = (a.a0 + a.a1) / 2, [vx, vy] = P(186, mid);
     const val = el("text", { x: vx, y: vy + (a.top ? 4 : 12), class: "dig", "font-size": 25 }, "-");
-    const [nx, ny] = P(238, mid);
+    const [nx, ny] = P(ICONS[k] ? 250 : 238, mid);
     arcTexts.push(val);
-    el("text", { x: nx, y: ny + 4, class: "lbl dim", "text-anchor": a.side < 0 ? "end" : "start", "font-size": 10, "letter-spacing": "1.5" }, a.s);
+    if (ICONS[k]) {
+      const ig = el("g", { transform: `translate(${nx - 13} ${ny - 16}) scale(1.08)`, fill: "none", stroke: "#a8a8a8", "stroke-width": 1.7, "stroke-linecap": "round", "stroke-linejoin": "round" });
+      ICONS[k].forEach(d => el("path", { d }, ig));
+      el("text", { x: nx, y: ny + 22, class: "lbl dim", "text-anchor": "middle", "font-size": 8, "letter-spacing": "1" }, a.s);
+    } else el("text", { x: nx, y: ny + 4, class: "lbl dim", "text-anchor": "middle", "font-size": 10, "letter-spacing": "1.5" }, a.s);
     el("path", { d: arc(R_ARC - 10, a.a0, a.a1), class: "hit" }).addEventListener("click", () => openPicker("arc", i));
     R.arcs.push({ fil, val, a, k });
   });
@@ -607,11 +623,22 @@ function build() {
   el("text", { x: CX, y: 249, class: "lbl", "text-anchor": "middle", "font-size": 8, "letter-spacing": "2" }, "KM/H");
   el("line", { x1: CX - 78, y1: 254, x2: CX + 78, y2: 254, stroke: "#e6e6e6", "stroke-width": 1.2 });
   R.trip = {};
+  R.tripG = el("g", {});
   [["dist", "Viaje"], ["dur", "Tiempo"], ["vavg", "Vel. media"], ["cons", "Consumo"], ["lit", "Gastado"], ["cost", "Coste"]].forEach(([k, n], i) => {
     const y = 266 + i * 10.4;
-    el("text", { x: CX - 5, y, class: "lbl dim", "text-anchor": "end", "font-size": 9.5 }, n);
-    R.trip[k] = el("text", { x: CX + 5, y, class: "lbl", "font-size": 9.5, "font-weight": 700 }, "-");
+    el("text", { x: CX - 5, y, class: "lbl dim", "text-anchor": "end", "font-size": 9.5 }, n, R.tripG);
+    R.trip[k] = el("text", { x: CX + 5, y, class: "lbl", "font-size": 9.5, "font-weight": 700 }, "-", R.tripG);
   });
+
+  R.brkG = el("g", { display: "none" });
+  el("text", { x: CX, y: 266, class: "lbl", "text-anchor": "middle", "font-size": 9.5, "font-weight": 700 }, "Frenada desde 100 km/h", R.brkG);
+  R.brk = {};
+  [["d", "Distancia"], ["t", "Tiempo"], ["avg", "Media"], ["max", "Máxima"]].forEach(([k, n], i) => {
+    const y = 278 + i * 10.4;
+    el("text", { x: CX - 5, y, class: "lbl dim", "text-anchor": "end", "font-size": 9.5 }, n, R.brkG);
+    R.brk[k] = el("text", { x: CX + 5, y, class: "lbl", "font-size": 9.5, "font-weight": 700 }, "-", R.brkG);
+  });
+  if (brkShowUntil > performance.now()) showBrake();
 
   // Aguja
   R.needle = el("g", {});
@@ -779,6 +806,7 @@ function setVal(k, v) {
     }
     trip.last = now; trip.vmax = Math.max(trip.vmax, v);
     perfSample(v, now);
+    brakeSample(v, now);
     gDemoSpeed(v, now);
   }
   if (k === "rpm" && v != null) {
@@ -1530,6 +1558,42 @@ $("recBadge").onclick = () => stopRec();
 $("logBtn").onclick = openLog;
 $("closeLog").onclick = closeOv;
 window.addEventListener("resize", () => { if (!$("logOv").hidden) drawLog(); });
+
+/* ---------- Prueba de frenada 100-0 (automática) ---------- */
+const brk = { state: "idle", lastV: 0, lastT: 0, t0: 0, prevV: 0, prevT: 0, dist: 0, maxG: 0, res: null };
+let brkShowUntil = 0;
+function brakeSample(v, now) {
+  if (brk.state === "idle" && brk.lastV >= 100 && v < 100 && brk.lastT) {
+    const f = (brk.lastV - 100) / Math.max(0.001, brk.lastV - v);
+    Object.assign(brk, { state: "run", t0: brk.lastT + f * (now - brk.lastT), dist: 0, maxG: 0 });
+    brk.prevV = 100; brk.prevT = brk.t0;
+  }
+  if (brk.state === "run") {
+    const dt = (now - brk.prevT) / 1000;
+    if (dt > 0) {
+      brk.dist += (v + brk.prevV) / 2 / 3.6 * dt;
+      brk.maxG = Math.max(brk.maxG, (brk.prevV - v) / 3.6 / dt / 9.81);
+    }
+    if (performance.now() - GM.real < 1000) brk.maxG = Math.max(brk.maxG, -GM.lon);   // con el acelerómetro del móvil, mejor
+    if (v > brk.prevV + 3 || now - brk.t0 > 15000) brk.state = "idle";                // ha vuelto a acelerar: no cuenta
+    else if (v < 2) {
+      const t = (now - brk.t0) / 1000;
+      brk.res = { d: brk.dist, t, avg: 100 / 3.6 / t / 9.81, max: brk.maxG };
+      brk.state = "idle"; brkShowUntil = performance.now() + 20000; showBrake();
+      if (!demoT) toast(`Frenada 100-0: ${brk.res.d.toFixed(1)} m en ${brk.res.t.toFixed(2)} s`, "ok");
+    }
+    brk.prevV = v; brk.prevT = now;
+  }
+  brk.lastV = v; brk.lastT = now;
+}
+function showBrake() {
+  if (!R.brkG || !brk.res) return;
+  const r = brk.res;
+  R.brk.d.textContent = r.d.toFixed(1) + " m"; R.brk.t.textContent = r.t.toFixed(2) + " s";
+  R.brk.avg.textContent = r.avg.toFixed(2) + " g"; R.brk.max.textContent = r.max.toFixed(2) + " g";
+  R.brkG.setAttribute("display", "inline"); R.tripG.setAttribute("display", "none");
+}
+setInterval(() => { if (R.brkG && brkShowUntil && performance.now() > brkShowUntil) { brkShowUntil = 0; R.brkG.setAttribute("display", "none"); R.tripG.setAttribute("display", "inline"); } }, 1000);
 
 /* ---------- Cronómetro 0–100 km/h y 400 m ---------- */
 const perf = { state: "off", t0: 0, dist: 0, lastT: 0, lastSpd: 0, zeroT: 0, t100: null, t400: null, v400: null };
