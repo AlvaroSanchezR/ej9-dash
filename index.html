@@ -415,7 +415,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v3.4 · 12/11/2026 20:25"; // se cambia con cada actualización
+const APP_VERSION = "v3.5 · 12/11/2026 20:25"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -634,8 +634,11 @@ function build() {
   if (E.carbon) el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#carbon)" });
   el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#face)" });
   el("path", { d: sector(R_IN + 14, R_FACE, rpmAngle(cfg.red), A_START + A_SPAN), fill: "url(#rz)" });
-  el("circle", { cx: CX, cy: CY, r: R_IN, fill: "var(--bg)" });
-  el("circle", { cx: CX, cy: CY, r: R_IN, fill: "none", stroke: "#555", "stroke-width": 2 });
+  // Centro negro con el borde difuminado hacia la esfera, sin aro marcado
+  const RS = R_IN + 16, ig = el("radialGradient", { id: "inner", cx: CX, cy: CY, r: RS, gradientUnits: "userSpaceOnUse" }, defs);
+  [[0, 1], [(R_IN - 10) / RS, 1], [(R_IN - 2) / RS, .92], [(R_IN + 5) / RS, .55], [(R_IN + 11) / RS, .18], [1, 0]]
+    .forEach(([o, op]) => el("stop", { offset: o.toFixed(3), "stop-color": "#000", "stop-opacity": op }, ig));
+  el("circle", { cx: CX, cy: CY, r: RS, fill: "url(#inner)" });
   arcTexts.forEach(t => svg.appendChild(t)); // nombres y valores de los arcos por encima de la esfera
 
   const nums = [];
