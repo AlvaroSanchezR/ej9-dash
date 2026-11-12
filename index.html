@@ -426,7 +426,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v5.0 · 12/11/2026 22:00"; // se cambia con cada actualización
+const APP_VERSION = "v5.1 · 12/11/2026 22:05"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -1707,8 +1707,7 @@ function brakeSample(v, now) {
     else if (v < 2) {
       const t = (now - brk.t0) / 1000;
       brk.res = { d: brk.dist, t, avg: 100 / 3.6 / t / 9.81, max: brk.maxG };
-      brk.state = "idle"; brkShowUntil = performance.now() + 20000; showBrake();
-      if (!demoT) toast(`Frenada 100-0: ${brk.res.d.toFixed(1)} m en ${brk.res.t.toFixed(2)} s`, "ok");
+      brk.state = "idle";   // ya no se enseña en el reloj ni sale aviso (no interesa)
     }
     brk.prevV = v; brk.prevT = now;
   }
