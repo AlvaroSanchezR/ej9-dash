@@ -106,6 +106,8 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 .box{fill:none;stroke:#bdbdbd;stroke-width:2}
 .gtxt{font-family:var(--race);font-weight:600;fill:var(--fg);text-anchor:middle;dominant-baseline:central;font-size:40px}
 .brand{font-family:var(--brand);font-weight:600;font-size:22px;fill:#8a8a8a;text-anchor:middle;letter-spacing:1px}
+.brand.cold{fill:#3b8cff;font-size:15px}
+.coldz{fill:#2f7bff;opacity:.45}
 .hit{fill:none;stroke:transparent;stroke-width:46;cursor:pointer}
 .cell{cursor:pointer}
 
@@ -426,7 +428,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v4.7 · 12/11/2026 21:40"; // se cambia con cada actualización
+const APP_VERSION = "v4.8 · 12/11/2026 21:50"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -655,6 +657,7 @@ function build() {
   if (E.carbon) el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#carbon)" });
   el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#face)" });
   el("path", { d: sector(R_IN + 14, R_FACE, rpmAngle(cfg.red), A_START + A_SPAN), fill: "url(#rz)" });
+  R.cold = el("path", { d: "", class: "coldz" }); R.coldLim = null;
   el("circle", { cx: CX, cy: CY, r: R_IN, fill: "var(--bg)" });
   el("circle", { cx: CX, cy: CY, r: R_IN, fill: "none", stroke: "#555", "stroke-width": 2 });
   arcTexts.forEach(t => svg.appendChild(t)); // nombres y valores de los arcos por encima de la esfera
@@ -667,7 +670,7 @@ function build() {
     el("line", { x1, y1, x2, y2, class: "tick" + (v > cfg.red ? " rz" : "") + (major || half ? "" : " mn"), style: v > cfg.red ? "" : "stroke:" + E.tick, "stroke-width": major ? 4.5 : half ? 3.2 : 2.4 });
     if (major) { const [tx, ty] = P(R_FACE - 35, a); nums.push(el("text", { x: tx, y: ty, class: "num", "font-size": 30, style: "fill:" + (v > cfg.red && E.num === "#e3170a" ? "#fff" : E.num) + (E.nsw ? `;stroke-width:${E.nsw}px` : ""), stroke: v > cfg.red ? (E.nsw ? "#ff4a3d" : N ? "#5e110b" : "#e3170a") : E.halo }, v / 1000)); }
   }
-  el("text", { x: CX, y: CY + 146, class: "brand" }, cfg.name || "");
+  R.brand = el("text", { x: CX, y: CY + 146, class: "brand" }, cfg.name || "");
 
   // Lecturas centrales
   // Luces de cambio (verde, ámbar y rojo) arriba del círculo central
@@ -739,6 +742,34 @@ setInterval(() => { if (connected) { saveTank(); saveOdo(); } }, 10000);
 
 /* Cuentakilómetros: km reales metidos a mano + lo recorrido con el adaptador conectado */
 let odo = { km: null, sent: null }, odoCar = false;
+/* ---------- Aceite frío: límite de vueltas hasta que el aceite coge temperatura ----------
+   Si el coche no da la temperatura del aceite (el Civic no la da), se estima: el aceite sigue al agua
+   pero mucho más despacio (unos 6 min de retraso), y con más vueltas se calienta antes. */
+let oilEst = null, coldLim = null, oilT = 0;
+setInterval(() => {
+  const now = performance.now(), dt = oilT ? (now - oilT) / 1000 : 0; oilT = now;
+  let oil = V.oil;
+  if (oil == null) {
+    if (V.water == null || !(connected || demoT)) { oilEst = null; }
+    else {
+      if (oilEst == null) oilEst = Math.min(V.water, 85);
+      const tau = 420 / (1 + Math.max(0, (V.rpm || 800) - 800) / 3000);   // a más vueltas, antes se calienta
+      if (V.water > oilEst) oilEst += (V.water - oilEst) * Math.min(1, dt / tau);
+      else oilEst += (V.water - oilEst) * Math.min(1, dt / 600);
+    }
+    oil = oilEst;
+  }
+  // < 40 °C: máximo 4000 rpm · de 40 a 80 °C sube poco a poco · ≥ 80 °C: sin límite
+  const lim = oil == null || oil >= 80 ? null : Math.round((4000 + Math.max(0, oil - 40) / 40 * (cfg.red - 4000)) / 100) * 100;
+  coldLim = lim != null && lim < cfg.red ? lim : null;
+  if (coldLim && (V.rpm || 0) > coldLim + 200) alertNow("cold", `Aceite frío: no pases de ${coldLim} rpm`, "warn");
+  if (R.cold && R.coldLim !== coldLim) {
+    R.coldLim = coldLim;
+    R.cold.setAttribute("d", coldLim ? sector(R_IN + 14, R_FACE, rpmAngle(coldLim), rpmAngle(cfg.red)) : "");
+    R.brand.classList.toggle("cold", !!coldLim);
+    R.brand.textContent = coldLim ? `ACEITE FRÍO · ${coldLim}` : (cfg.name || "");
+  }
+}, 1000);
 try { Object.assign(odo, JSON.parse(localStorage.getItem("ej9odo") || "{}")); } catch (e) {}
 const saveOdo = () => { try { localStorage.setItem("ej9odo", JSON.stringify(odo)); } catch (e) {} };
 async function sendOdo(force) {
@@ -819,19 +850,20 @@ function anim(t) {
   // Barrido de aguja al conectar: sube hasta el final y baja, como un cuadro de verdad
   if (sweepT0) { const p = (t - sweepT0) / 1800; if (p < 1) dispRpm = MAXRPM * Math.sin(Math.PI * Math.max(0, p)); else sweepT0 = 0; }
   else dispRpm += (target - dispRpm) * (1 - Math.exp(-dt / 30));
-  const fl = !!cfg.flash && !sweepT0 && dispRpm >= cfg.shift && (V.rpm || 0) >= cfg.shift - 300;
+  const SH = coldLim ? Math.min(cfg.shift, coldLim) : cfg.shift;   // con el aceite frío se cambia antes
+  const fl = !!cfg.flash && !sweepT0 && dispRpm >= SH && (V.rpm || 0) >= SH - 300;
   if (fl !== AC.fl) { AC.fl = fl; flashEl.classList.toggle("on", fl); }
   if (cfg.view === "g") drawG(t);
   // Solo se toca la pantalla cuando algo cambia de verdad (ahorra batería sin perder fluidez)
   const txt = Math.round(dispRpm / 10) * 10;
   if (R.needle && cfg.view === "full") {
     if (AC.el !== R.needle) { AC.el = R.needle; AC.ang = AC.hot = AC.txt = AC.vtec = AC.led = null; }
-    const ang = rpmAngle(dispRpm).toFixed(2), hot = dispRpm >= cfg.shift, vt = cfg.vtec > 0 && dispRpm >= cfg.vtec;
+    const ang = rpmAngle(dispRpm).toFixed(2), hot = dispRpm >= SH, vt = cfg.vtec > 0 && dispRpm >= cfg.vtec;
     if (ang !== AC.ang) { AC.ang = ang; R.needle.setAttribute("transform", `rotate(${ang} ${CX} ${CY})`); }
     if (hot !== AC.hot) { AC.hot = hot; R.needle.firstChild.setAttribute("fill", hot ? "#ff5a4d" : "var(--red)"); }
     if (txt !== AC.txt) { AC.txt = txt; R.rpm.textContent = txt; }
     if (vt !== AC.vtec) { AC.vtec = vt; R.vtec.classList.toggle("on", vt); }
-    const n = R.leds.length, led = hot ? n + 1 : Math.max(0, Math.min(n, Math.floor((dispRpm - (cfg.shift - 2000)) / 2000 * n)));
+    const n = R.leds.length, led = hot ? n + 1 : Math.max(0, Math.min(n, Math.floor((dispRpm - (SH - 2000)) / 2000 * n)));
     if (led !== AC.led) {
       AC.led = led;
       R.leds.forEach((c, i) => {
