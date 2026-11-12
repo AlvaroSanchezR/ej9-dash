@@ -247,6 +247,10 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 </nav>
 
 <button class="menu" id="menuBtn" aria-label="Menú"><i></i></button>
+<div id="otherWin" hidden style="position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.92);display:grid;place-items:center;text-align:center;font-family:var(--lab);color:#ddd;font-size:18px;padding:24px">
+  <div>Redline está abierta en otra ventana.<br><span style="color:#888;font-size:14px">Puedes cerrar esta.</span><br><br>
+  <button class="b pri" onclick="location.reload()">Usar aquí</button></div>
+</div>
 <i id="obdDot" title="Gris: sin conexión · Ámbar: demo · Verde: OBD conectado"></i>
 
 <div class="toast" id="toast" hidden></div>
@@ -426,7 +430,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v5.5 · 12/11/2026 22:05"; // se cambia con cada actualización
+const APP_VERSION = "v5.6 · 12/11/2026 22:10"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -467,7 +471,23 @@ const fixList = (arr, def) => def.map((k, i) => SENSORS[arr && arr[i]] ? arr[i] 
 cfg.arcs = fixList(cfg.arcs, DEF_ARCS); cfg.cells = fixList(cfg.cells, DEF_CELLS);
 if (cfg.cells.join() === "volt,adv,fuel,stft,o2,ltft") cfg.cells = DEF_CELLS.slice();   // tablas de serie antiguas → nuevas
 if (!cfg.oilArc) { if (cfg.arcs[1] === "iat") cfg.arcs[1] = "oil"; cfg.oilArc = true; } // la temperatura de aceite pasa al arco de arriba a la derecha
-const saveCfg = () => { try { localStorage.setItem("ej9cfg2", JSON.stringify(cfg)); } catch (e) {} };
+/* ---------- Una sola ventana a la vez ----------
+   Si la app está abierta en una pestaña de Brave y también desde el icono, solo manda la última que se ha usado.
+   La otra se aparta (desconecta y deja de guardar) para no pisar ajustes ni km. */
+const MY_ID = Math.random().toString(36).slice(2);
+let slept = false;
+try { localStorage.setItem("rlActive", MY_ID); } catch (e) {}
+addEventListener("storage", e => {
+  if (e.key !== "rlActive" || e.newValue === MY_ID || slept) return;
+  try { if (connected) disconnect(); stopDemo(); } catch (er) {}
+  slept = true; $("otherWin").hidden = false;
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  let a = null; try { a = localStorage.getItem("rlActive"); } catch (e) {}
+  if (slept || (a && a !== MY_ID)) location.reload();   // se ha usado la otra ventana: se recarga con los datos buenos
+});
+const saveCfg = () => { if (slept) return; try { localStorage.setItem("ej9cfg2", JSON.stringify(cfg)); } catch (e) {} };
 // Pide al navegador que no borre nunca los datos de la app (ajustes, km, depósito…) aunque falte espacio
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
 
@@ -746,7 +766,7 @@ const HLEN = 90;
 /* Depósito: km y litros estimados (sin calibrar) desde el último lleno; solo cuenta con el coche conectado */
 let tank = { started: false, km: 0, lraw: 0 };
 try { Object.assign(tank, JSON.parse(localStorage.getItem("ej9tank") || "{}")); } catch (e) {}
-const saveTank = () => { try { localStorage.setItem("ej9tank", JSON.stringify(tank)); } catch (e) {} };
+const saveTank = () => { if (slept) return; try { localStorage.setItem("ej9tank", JSON.stringify(tank)); } catch (e) {} };
 setInterval(() => { if (connected) { saveTank(); saveOdo(); } }, 10000);
 
 /* Cuentakilómetros: km reales metidos a mano + lo recorrido con el adaptador conectado */
@@ -774,7 +794,7 @@ setInterval(() => {
   if (coldLim !== builtCold) { builtCold = coldLim; if (cfg.view === "full") build(); }   // la zona roja baja o sube con el aceite
 }, 1000);
 try { Object.assign(odo, JSON.parse(localStorage.getItem("ej9odo") || "{}")); } catch (e) {}
-const saveOdo = () => { try { localStorage.setItem("ej9odo", JSON.stringify(odo)); } catch (e) {} };
+const saveOdo = () => { if (slept) return; try { localStorage.setItem("ej9odo", JSON.stringify(odo)); } catch (e) {} };
 async function sendOdo(force) {
   if (!cfg.hook || odo.km == null) return false;
   if (!force && odo.sent != null && odo.km - odo.sent < 0.05) return false;
