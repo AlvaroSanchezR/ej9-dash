@@ -87,10 +87,10 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 .vtec.on{fill:var(--red)}
 .arcL{fill:none;stroke:#8a8a8a;stroke-width:3;stroke-linejoin:miter}
 .arcR{fill:none;stroke:#e3170a;stroke-width:3.5;stroke-linejoin:miter}
-.trk{fill:none;stroke:#2c2c2c;stroke-width:13}
+.trk{fill:none;stroke:#2c2c2c;stroke-width:16}
 .endT{stroke:#8a8a8a;stroke-width:3.5;stroke-linecap:butt}
 .endT.r{stroke:#e3170a;stroke-width:3.5}
-.fil{fill:none;stroke:var(--fg);stroke-width:13}
+.fil{fill:none;stroke:var(--fg);stroke-width:16}
 .fil.warn{stroke:var(--amber)} .fil.crit{stroke:var(--red)}
 .cap{fill:none;stroke:var(--red);stroke-width:13}
 .box{fill:none;stroke:#bdbdbd;stroke-width:2}
@@ -415,7 +415,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v3.1 · 12/11/2026 20:20"; // se cambia con cada actualización
+const APP_VERSION = "v3.2 · 12/11/2026 20:25"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -597,14 +597,20 @@ function build() {
     const redFrom = k === "water" ? cfg.water : a.max - (a.max - a.min) * 0.12;
     const aRed = a.a0 + Math.max(0, Math.min(1, (redFrom - a.min) / (a.max - a.min))) * (a.a1 - a.a0);
     const sd = a.side;
-    // Línea de escala de una sola pieza, como en HonDash: en cada punta dobla en esquina hacia dentro (roja en el máximo)
-    const RL = R_ARC + 9, [p0x, p0y] = SP(sd, RL, a.a0), [p1x, p1y] = SP(sd, RL, a.a1), FL = 20;
-    const arcTo = (from, to) => { const [x, y] = SP(sd, RL, to), R2 = RL + D_SIDE; return `A${R2} ${R2} 0 0 ${to > from ? 1 : 0} ${x.toFixed(1)} ${y.toFixed(1)}`; };
-    const [rx, ry0] = SP(sd, RL, aRed);
-    el("path", { d: `M${(p0x - sd * FL).toFixed(1)} ${p0y.toFixed(1)}L${p0x.toFixed(1)} ${p0y.toFixed(1)}${arcTo(a.a0, aRed)}`, class: "arcL" });
-    el("path", { d: `M${rx.toFixed(1)} ${ry0.toFixed(1)}${arcTo(aRed, a.a1)}L${(p1x - sd * FL).toFixed(1)} ${p1y.toFixed(1)}`, class: "arcR" });
-    el("path", { d: sArc(sd, R_BAR, a.a0, a.a1), class: "trk" });
-    const fil = el("path", { d: "", class: "fil" });
+    // Como HonDash: la barra acaba en corte plano y la línea de escala dobla en esquina por encima (y por debajo) de ella
+    const RL = R_ARC + 11, R2L = RL + D_SIDE, FL = 36, dir = Math.sign(a.a1 - a.a0);
+    const yA = SP(sd, R_BAR, a.a0)[1], yB = SP(sd, R_BAR, a.a1)[1];
+    const angAtY = y => { const t = Math.asin((y - CY) / R2L) * 180 / Math.PI; return sd < 0 ? 180 - t : (t < 0 ? t + 360 : t); };
+    const e0 = angAtY(yA), e1 = angAtY(yB);
+    const [p0x, p0y] = SP(sd, RL, e0), [p1x, p1y] = SP(sd, RL, e1), [rx, ry0] = SP(sd, RL, aRed);
+    const arcTo = (from, to) => { const [x, y] = SP(sd, RL, to); return `A${R2L} ${R2L} 0 0 ${to > from ? 1 : 0} ${x.toFixed(1)} ${y.toFixed(1)}`; };
+    el("path", { d: `M${(p0x - sd * FL).toFixed(1)} ${p0y.toFixed(1)}L${p0x.toFixed(1)} ${p0y.toFixed(1)}${arcTo(e0, aRed)}`, class: "arcL" });
+    el("path", { d: `M${rx.toFixed(1)} ${ry0.toFixed(1)}${arcTo(aRed, e1)}L${(p1x - sd * FL).toFixed(1)} ${p1y.toFixed(1)}`, class: "arcR" });
+    const cp = el("clipPath", { id: "bc" + i }, defs);
+    el("rect", { x: 0, y: Math.min(yA, yB) + 3.5, width: 520, height: Math.abs(yA - yB) - 7 }, cp);
+    a.s0 = a.a0 - dir * 5; a.s1 = a.a1 + dir * 5;   // la barra se alarga un poco y el recorte la deja plana
+    el("path", { d: sArc(sd, R_BAR, a.s0, a.s1), class: "trk", "clip-path": `url(#bc${i})` });
+    const fil = el("path", { d: "", class: "fil", "clip-path": `url(#bc${i})` });
     const anc = sd < 0 ? "start" : "end";
     [[p0x, p0y, a.min + (a.top ? "" : " " + a.u)], [p1x, p1y, a.max + (a.top ? " " + a.u : "")]].forEach(([ex, ey, txt]) => {
       arcTexts.push(el("text", { x: ex - sd * (FL + 4), y: ey + 4.5, class: "lbl", "text-anchor": anc, "font-size": 13 }, txt));
@@ -811,7 +817,7 @@ function anim(t) {
       o.cf = o.cf == null ? o.tf : o.cf + (o.tf - o.cf) * (1 - Math.exp(-dt / 140));
       if (Math.abs(o.cf - (o.drawn ?? -1)) > 0.0015) {
         o.drawn = o.cf;
-        o.fil.setAttribute("d", o.cf > 0.005 ? sArc(o.a.side, R_BAR, o.a.a0, o.a.a0 + o.cf * (o.a.a1 - o.a.a0)) : "");
+        o.fil.setAttribute("d", o.cf > 0.005 ? sArc(o.a.side, R_BAR, o.a.s0, o.cf >= 0.995 ? o.a.s1 : o.a.a0 + o.cf * (o.a.a1 - o.a.a0)) : "");
       }
     }
   }
