@@ -415,7 +415,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v2.7 · 12/11/2026 20:20"; // se cambia con cada actualización
+const APP_VERSION = "v2.8 · 12/11/2026 20:15"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -480,12 +480,19 @@ function el(tag, attrs, parent, text) {
 const rpmAngle = v => A_START + Math.min(Math.max(v, 0), MAXRPM) / MAXRPM * A_SPAN;
 
 /* Huecos de los arcos: a0 = mínimo, a1 = máximo. side: -1 izquierda, 1 derecha */
+// Las barras laterales no siguen el círculo del reloj: van sobre un círculo mucho mayor, así suben casi rectas como en HonDash
+const D_SIDE = 150;
 const ARC_SLOTS = [
-  { a0: 192, a1: 252, side: -1, top: true },
-  { a0: 348, a1: 288, side: 1,  top: true },
-  { a0: 108, a1: 168, side: -1, top: false },
-  { a0: 72,  a1: 12,  side: 1,  top: false },
+  { a0: 187,   a1: 213.5, side: -1, top: true },
+  { a0: 353,   a1: 326.5, side: 1,  top: true },
+  { a0: 146.5, a1: 173,   side: -1, top: false },
+  { a0: 33.5,  a1: 7,     side: 1,  top: false },
 ];
+const SP = (side, r, a) => { const cx = CX - side * D_SIDE, R2 = r + D_SIDE; return [cx + R2 * Math.cos(a * Math.PI / 180), CY + R2 * Math.sin(a * Math.PI / 180)]; };
+function sArc(side, r, a1, a2) {
+  const [x1, y1] = SP(side, r, a1), [x2, y2] = SP(side, r, a2), R2 = r + D_SIDE;
+  return `M${x1.toFixed(1)} ${y1.toFixed(1)}A${R2} ${R2} 0 0 ${a2 > a1 ? 1 : 0} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+}
 
 /* Celdas con gráfica: "m" = pantalla completa, "s" = pantalla taller */
 function cellHtml(prefix, i, k) {
@@ -589,24 +596,25 @@ function build() {
     // Barra abierta: línea fina de escala por fuera, barra de progreso dentro y zona roja al final
     const redFrom = k === "water" ? cfg.water : a.max - (a.max - a.min) * 0.12;
     const aRed = a.a0 + Math.max(0, Math.min(1, (redFrom - a.min) / (a.max - a.min))) * (a.a1 - a.a0);
-    el("path", { d: arc(R_ARC + 9, a.a0, aRed), class: "arcL" });
-    el("path", { d: arc(R_ARC + 9, aRed, a.a1), class: "arcR" });
-    el("path", { d: arc(R_BAR, a.a0, a.a1), class: "trk" });
+    const sd = a.side;
+    el("path", { d: sArc(sd, R_ARC + 9, a.a0, aRed), class: "arcL" });
+    el("path", { d: sArc(sd, R_ARC + 9, aRed, a.a1), class: "arcR" });
+    el("path", { d: sArc(sd, R_BAR, a.a0, a.a1), class: "trk" });
     const fil = el("path", { d: "", class: "fil" });
-    [[a.a0, ""], [a.a1, " r"]].forEach(([ang, c]) => { const [x1, y1] = P(R_ARC - 7, ang), [x2, y2] = P(R_ARC + 12, ang); el("line", { x1, y1, x2, y2, class: "endT" + c }); });
+    [[a.a0, ""], [a.a1, " r"]].forEach(([ang, c]) => { const [x1, y1] = SP(sd, R_ARC - 7, ang), [x2, y2] = SP(sd, R_ARC + 12, ang); el("line", { x1, y1, x2, y2, class: "endT" + c }); });
     // Etiquetas de máximo y mínimo junto a los extremos
-    const [mxX, mxY] = P(R_ARC, a.a1), [mnX, mnY] = P(R_ARC, a.a0);
+    const [mxX, mxY] = SP(sd, R_ARC, a.a1), [mnX, mnY] = SP(sd, R_ARC, a.a0);
     const anc = a.side < 0 ? "start" : "end", dx = a.side < 0 ? 15 : -15;
     arcTexts.push(el("text", { x: mxX + dx, y: mxY + 5, class: "lbl", "text-anchor": anc, "font-size": 14 }, a.max + (a.top ? " " + a.u : "")),
                   el("text", { x: mnX + dx, y: mnY + 5, class: "lbl", "text-anchor": anc, "font-size": 14 }, a.min + (a.top ? "" : " " + a.u)));
     // Valor y nombre dentro del arco
-    const mid = (a.a0 + a.a1) / 2, [vx, vy] = P(186, mid);
+    const mid = (a.a0 + a.a1) / 2, [vx, vy] = SP(sd, 182, mid);
     const val = el("text", { x: vx, y: vy + (a.top ? 4 : 12), class: "dig", "font-size": 25 }, "-");
-    const [nx, ny] = P(ICONS[k] ? 244 : 238, mid);
+    const [nx, ny] = SP(sd, ICONS[k] ? 246 : 238, mid);
     arcTexts.push(val);
     if (ICONS[k]) drawIcon(k, nx, ny, 30);   // testigo dibujado en vez del nombre
     else el("text", { x: nx, y: ny + 4, class: "lbl dim", "text-anchor": a.side < 0 ? "end" : "start", "font-size": 10, "letter-spacing": "1.5" }, a.s);
-    el("path", { d: arc(R_ARC - 10, a.a0, a.a1), class: "hit" }).addEventListener("click", () => openPicker("arc", i));
+    el("path", { d: sArc(sd, R_ARC - 10, a.a0, a.a1), class: "hit" }).addEventListener("click", () => openPicker("arc", i));
     R.arcs.push({ fil, val, a, k });
   });
 
@@ -793,7 +801,7 @@ function anim(t) {
       o.cf = o.cf == null ? o.tf : o.cf + (o.tf - o.cf) * (1 - Math.exp(-dt / 140));
       if (Math.abs(o.cf - (o.drawn ?? -1)) > 0.0015) {
         o.drawn = o.cf;
-        o.fil.setAttribute("d", o.cf > 0.005 ? arc(R_BAR, o.a.a0, o.a.a0 + o.cf * (o.a.a1 - o.a.a0)) : "");
+        o.fil.setAttribute("d", o.cf > 0.005 ? sArc(o.a.side, R_BAR, o.a.a0, o.a.a0 + o.cf * (o.a.a1 - o.a.a0)) : "");
       }
     }
   }
