@@ -55,7 +55,8 @@ body{background:var(--bg);color:var(--fg);font-family:var(--ui);margin:0;
 
 .menu{position:fixed;z-index:20;bottom:calc(6px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);
   width:40px;height:40px;border-radius:50%;border:0;background:rgba(38,38,38,.85);box-shadow:0 0 24px 4px rgba(227,23,10,.3);
-  display:grid;place-items:center;cursor:pointer;padding:0;opacity:.75}
+  display:grid;place-items:center;cursor:pointer;padding:0;opacity:.75;transition:opacity .4s}
+.menu.hide{opacity:0;pointer-events:none}
 .menu i{display:block;width:20px;height:3px;background:var(--fg);border-radius:2px;box-shadow:0 7px 0 var(--fg),0 -7px 0 var(--fg)}
 .menu:focus-visible,button:focus-visible{outline:2px solid var(--red);outline-offset:3px}
 
@@ -416,7 +417,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v3.9 · 12/11/2026 20:35"; // se cambia con cada actualización
+const APP_VERSION = "v4.0 · 12/11/2026 20:40"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -1371,6 +1372,11 @@ $("fillBtn").onclick = () => {
   saveTank(); $("fillL").value = ""; tankInfo();
 };
 $("menuBtn").onclick = () => openOv("menuOv");
+// El botón del menú se esconde a los 4 s sin tocar la pantalla y vuelve al tocarla
+let menuT = 0;
+const showMenuBtn = () => { $("menuBtn").classList.remove("hide"); clearTimeout(menuT); menuT = setTimeout(() => $("menuBtn").classList.add("hide"), 4000); };
+addEventListener("pointerdown", showMenuBtn, true);
+showMenuBtn();
 $("closeMenu").onclick = closeOv;
 $("connBtn").onclick = () => {
   if (connected) { userOff = true; disconnect(); return; }
