@@ -381,6 +381,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
       <button class="b" id="gearReset">Valores del EJ9</button>
     </div>
     <h3 class="sub">CONSUMO</h3>
+    <div class="cfg"><label for="cfgTankL">Capacidad del depósito (L)</label><input id="cfgTankL" type="number" step="1"></div>
     <div class="cfg"><label for="cfgPrice">Precio gasolina (€/L)</label><input id="cfgPrice" type="number" step="0.01"></div>
     <div class="cfg"><label for="cfgFcal">Factor de calibración</label><input id="cfgFcal" type="number" step="0.01"></div>
     <p class="note" id="tankInfo"></p>
@@ -413,40 +414,42 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v2.5 · 12/11/2026 20:05"; // se cambia con cada actualización
+const APP_VERSION = "v2.6 · 12/11/2026 20:15"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
 const DEF_CELLS = ["volt", "adv", "fuel", "stft", "o2", "ltft"];
 // Pantalla taller: se muestran los 12 primeros que el coche sí da (los que no da se saltan)
-const SHOP_ALL = ["rpm", "spd", "water", "oil", "tps", "mapm", "adv", "fuel", "stft", "ltft", "o2", "volt", "iat", "lam", "maf", "load"];
+const SHOP_ALL = ["rpm", "spd", "water", "oil", "tps", "mapm", "adv", "fuel", "stft", "ltft", "o2", "volt", "iat", "lam", "maf", "flvl", "glon", "load"];
 let SHOP = SHOP_ALL.slice(0, 12);
 // Si el coche no da un dato, se usa uno equivalente: sonda de banda ancha en vez de la clásica, caudalímetro en vez de presión de colector
 const SUBS = { o2: "lam", mapm: "maf", oil: "iat" };
-const DEF = { red: 7000, shift: 6500, vtec: 0, water: 105, volt: 12.0, name: "Civic EJ9", cc: 1396, price: 1.55, fcal: 1.0, gears: GEARS_EJ9,
+const DEF = { red: 7000, shift: 6500, vtec: 0, water: 105, volt: 12.0, name: "Civic EJ9", cc: 1396, price: 1.55, fcal: 1.0, tankL: 45, gears: GEARS_EJ9,
   arcs: DEF_ARCS.slice(), cells: DEF_CELLS.slice(), view: "full", night: "auto", sound: true, autoConn: true, lastConn: "", hook: "", theme: "blanca", flash: true, mass: 1130, spdCorr: 1 };
 let cfg = { ...DEF };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem("ej9cfg2") || "{}")); } catch (e) {}
 
 /* Catálogo de datos que se pueden poner en cualquier hueco */
 const SENSORS = {
-  water: { n: "Temp. agua",              s: "AGUA",       u: "°C",    min: -20, max: 120,  d: 0 },
-  iat:   { n: "Temp. admisión",          s: "ADMISIÓN",   u: "°C",    min: -20, max: 120,  d: 0 },
-  tps:   { n: "Acelerador",              s: "ACELERADOR", u: "%",     min: 0,   max: 100,  d: 0 },
-  mapm:  { n: "Presión colector",        s: "COLECTOR",   u: "mBar",  min: 0,   max: 1200, d: 0 },
-  load:  { n: "Carga motor",             s: "CARGA",      u: "%",     min: 0,   max: 100,  d: 0 },
-  volt:  { n: "Batería",                 s: "BATERÍA",    u: "V",     min: 8,   max: 16,   d: 2 },
-  adv:   { n: "Avance encendido",        s: "AVANCE",     u: "°",     min: -10, max: 45,   d: 1 },
-  stft:  { n: "Corrección corta (STFT)", s: "STFT",       u: "%",     min: -30, max: 30,   d: 1 },
-  ltft:  { n: "Corrección larga (LTFT)", s: "LTFT",       u: "%",     min: -30, max: 30,   d: 1 },
-  o2:    { n: "Sonda lambda (O2S1)",     s: "LAMBDA",     u: "V",     min: 0,   max: 1,    d: 2 },
-  fuel:  { n: "Consumo instantáneo",     s: "CONSUMO",    u: "L/100", min: 0,   max: 30,   d: 1 },
-  lh:    { n: "Consumo por hora",        s: "CONSUMO",    u: "L/h",   min: 0,   max: 20,   d: 1 },
-  rpm:   { n: "Revoluciones",            s: "RPM",        u: "rpm",   min: 0,   max: 8000, d: 0 },
-  spd:   { n: "Velocidad",               s: "VELOCIDAD",  u: "km/h",  min: 0,   max: 200,  d: 0 },
-  maf:   { n: "Caudal de aire (MAF)",    s: "MAF",        u: "g/s",   min: 0,   max: 100,  d: 1 },
-  oil:   { n: "Temp. aceite",            s: "ACEITE",     u: "°C",    min: -20, max: 120,  d: 0 },
-  lam:   { n: "Lambda (sonda banda ancha)", s: "LAMBDA",  u: "λ",     min: 0.7, max: 1.3,  d: 3 },
+  water: { n: "Temp. agua",              s: "AGUA",       u: "°C",    min: -20, max: 120,  d: 0, c: "168,85,247" },
+  iat:   { n: "Temp. admisión",          s: "ADMISIÓN",   u: "°C",    min: -20, max: 120,  d: 0, c: "56,189,248" },
+  tps:   { n: "Acelerador",              s: "ACELERADOR", u: "%",     min: 0,   max: 100,  d: 0, c: "250,204,21" },
+  mapm:  { n: "Presión colector",        s: "COLECTOR",   u: "mBar",  min: 0,   max: 1200, d: 0, c: "99,102,241" },
+  load:  { n: "Carga motor",             s: "CARGA",      u: "%",     min: 0,   max: 100,  d: 0, c: "45,212,191" },
+  volt:  { n: "Batería",                 s: "BATERÍA",    u: "V",     min: 8,   max: 16,   d: 2, c: "170,170,180" },
+  adv:   { n: "Avance encendido",        s: "AVANCE",     u: "°",     min: -10, max: 45,   d: 1, c: "236,72,153" },
+  stft:  { n: "Corrección corta (STFT)", s: "STFT",       u: "%",     min: -30, max: 30,   d: 1, c: "217,70,239" },
+  ltft:  { n: "Corrección larga (LTFT)", s: "LTFT",       u: "%",     min: -30, max: 30,   d: 1, c: "192,38,211" },
+  o2:    { n: "Sonda lambda (O2S1)",     s: "LAMBDA",     u: "V",     min: 0,   max: 1,    d: 2, c: "96,165,250" },
+  fuel:  { n: "Consumo instantáneo",     s: "CONSUMO",    u: "L/100", min: 0,   max: 30,   d: 1, c: "34,197,94" },
+  lh:    { n: "Consumo por hora",        s: "CONSUMO",    u: "L/h",   min: 0,   max: 20,   d: 1, c: "34,197,94" },
+  rpm:   { n: "Revoluciones",            s: "RPM",        u: "rpm",   min: 0,   max: 8000, d: 0, c: "255,59,46" },
+  spd:   { n: "Velocidad",               s: "VELOCIDAD",  u: "km/h",  min: 0,   max: 200,  d: 0, c: "226,232,240" },
+  maf:   { n: "Caudal de aire (MAF)",    s: "MAF",        u: "g/s",   min: 0,   max: 100,  d: 1, c: "129,140,248" },
+  oil:   { n: "Temp. aceite",            s: "ACEITE",     u: "°C",    min: -20, max: 120,  d: 0, c: "251,146,60" },
+  lam:   { n: "Lambda (sonda banda ancha)", s: "LAMBDA",  u: "λ",     min: 0.7, max: 1.3,  d: 3, c: "96,165,250" },
+  flvl:  { n: "Nivel de depósito",       s: "DEPÓSITO",   u: "%",     min: 0,   max: 100,  d: 0, c: "34,197,94" },
+  glon:  { n: "Aceleración longitudinal", s: "G LONG.",   u: "g",     min: -1,  max: 1,    d: 2, c: "244,114,182" },
 };
 const fixList = (arr, def) => def.map((k, i) => SENSORS[arr && arr[i]] ? arr[i] : k);
 cfg.arcs = fixList(cfg.arcs, DEF_ARCS); cfg.cells = fixList(cfg.cells, DEF_CELLS);
@@ -524,6 +527,7 @@ const THEMES = {
   blanca:  { n: "Blanca (HonDash)",        a: "#c9c9c9", b: "#f6f6f6", tick: "#111",    num: "#111",    halo: "#d4d4d4", glow: .5 },
   negra:   { n: "Negra con números rojos", a: "#0b0b0b", b: "#222",    tick: "#e8e8e8", num: "#e3170a", halo: "#141414", glow: .12 },
   azul:    { n: "Azul años 90",            a: "#0b2563", b: "#1f56c4", tick: "#fff",    num: "#fff",    halo: "#15408f", glow: .25 },
+  gris:    { n: "Gris grafito",            a: "#3c4449", b: "#545d63", tick: "#e8eaeb", num: "#f4f5f6", halo: "#3f474c", glow: .22 },
   carbono: { n: "Carbono",                 a: "#000",    b: "#3a3a3a", tick: "#f0f0f0", num: "#f0f0f0", halo: "#1b1b1b", glow: .15, carbon: true },
 };
 
@@ -629,7 +633,8 @@ function build() {
   R.tripG = el("g", {});
   [["dist", "Viaje"], ["dur", "Tiempo"], ["vavg", "Vel. media"], ["cons", "Consumo"], ["lit", "Gastado"], ["cost", "Coste"]].forEach(([k, n], i) => {
     const y = 266 + i * 10.4;
-    el("text", { x: CX - 5, y, class: "lbl dim", "text-anchor": "end", "font-size": 9.5 }, n, R.tripG);
+    const lb = el("text", { x: CX - 5, y, class: "lbl dim", "text-anchor": "end", "font-size": 9.5 }, n, R.tripG);
+    if (k === "lit") R.litLbl = lb;
     R.trip[k] = el("text", { x: CX + 5, y, class: "lbl", "font-size": 9.5, "font-weight": 700 }, "-", R.tripG);
   });
 
@@ -888,7 +893,7 @@ function drawChart(c, k) {
   if (g.min < 0 && g.max > 0) { ctx.setLineDash([4 * dpr, 4 * dpr]); ctx.strokeStyle = "#3a3a3a"; ctx.beginPath(); ctx.moveTo(0, y(0)); ctx.lineTo(w, y(0)); ctx.stroke(); ctx.setLineDash([]); }
   if (data.length < 2) return;
   const step = w / (HLEN - 1), x0 = w - (data.length - 1) * step;
-  const st = stateOf(k, data[data.length - 1]), col = st === "crit" ? "255,42,26" : st === "warn" ? "255,176,32" : "255,59,46";
+  const st = stateOf(k, data[data.length - 1]), col = st === "crit" ? "255,42,26" : st === "warn" ? "255,176,32" : (g.c || "255,59,46");
   const pts = data.map((v, i) => [x0 + i * step, y(v)]);
   const curve = () => { ctx.lineTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length - 1; i++) ctx.quadraticCurveTo(pts[i][0], pts[i][1], (pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2); ctx.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]); };
   ctx.beginPath(); ctx.moveTo(x0, h); curve();
@@ -939,7 +944,11 @@ function render() {
   R.trip.dur.textContent = fmtDur(dur);
   R.trip.vavg.textContent = dur > 5000 ? (trip.dist / (dur / 3600000)).toFixed(1) + " km/h" : "-";
   R.trip.cons.textContent = trip.dist > 0.2 ? (litres / trip.dist * 100).toFixed(1) + " L/100" : "-";
-  R.trip.lit.textContent = litres.toFixed(2) + " L";
+  if (V.flvl != null) {   // si el coche da el nivel de gasolina: litros que quedan y autonomía
+    const left = V.flvl / 100 * cfg.tankL, avg = trip.dist > 3 ? litres / trip.dist * 100 : null;
+    R.litLbl.textContent = "Depósito";
+    R.trip.lit.textContent = left.toFixed(0) + " L" + (avg && avg > 1 ? " · " + Math.round(left / avg * 100) + " km" : "");
+  } else { R.litLbl.textContent = "Gastado"; R.trip.lit.textContent = litres.toFixed(2) + " L"; }
   R.trip.cost.textContent = (litres * cfg.price).toFixed(2) + " €";
 }
 function resetTrip() { trip.dist = 0; trip.t0 = 0; trip.last = 0; trip.vmax = 0; trip.lraw = 0; fuelT = 0; MAXV.rpm = 0; render(); }
@@ -1107,6 +1116,7 @@ const PIDS = {
   "14": { k: "o2",    f: a => a / 200 },
   "10": { k: "maf",   f: (a, b) => (a * 256 + b) / 100 },
   "5C": { k: "oil",   f: a => a - 40 },
+  "2F": { k: "flvl",  f: a => a * 100 / 255 },
   "34": { k: "lam",   f: (a, b) => (a * 256 + b) / 32768 },   // sonda de banda ancha (corriente)
   "24": { k: "lam",   f: (a, b) => (a * 256 + b) / 32768 },   // sonda de banda ancha (tensión)
 };
@@ -1127,7 +1137,7 @@ async function readPid(pid) {
 }
 async function loop() {
   running = true;
-  const slow = ["0B", "11", "06", "14", "05", "5C", "0B", "0E", "10", "34", "0F", "07", "04", "24", "VOLT"];
+  const slow = ["0B", "11", "06", "14", "05", "5C", "0B", "0E", "10", "34", "0F", "07", "04", "24", "2F", "VOLT"];
   let i = 0, n = 0;
   while (running && connected) {
     try {
@@ -1269,7 +1279,7 @@ const OVS = ["menuOv", "dtcOv", "cfgOv", "pickOv", "logOv", "perfOv", "dynoOv", 
 function openOv(id) { OVS.forEach(o => $(o).hidden = o !== id); }
 function closeOv() { OVS.forEach(o => $(o).hidden = true); $("clearBox").hidden = true; gpsStop(); }
 OVS.forEach(o => $(o).addEventListener("click", e => { if (e.target.id === o) closeOv(); }));
-const NUM_FIELDS = [["cfgRed", "red"], ["cfgShift", "shift"], ["cfgVtec", "vtec"], ["cfgWater", "water"], ["cfgVolt", "volt"], ["cfgCc", "cc"], ["cfgPrice", "price"], ["cfgFcal", "fcal"], ["cfgMass", "mass"], ["cfgSpdCorr", "spdCorr"]];
+const NUM_FIELDS = [["cfgRed", "red"], ["cfgShift", "shift"], ["cfgVtec", "vtec"], ["cfgWater", "water"], ["cfgVolt", "volt"], ["cfgCc", "cc"], ["cfgPrice", "price"], ["cfgFcal", "fcal"], ["cfgMass", "mass"], ["cfgSpdCorr", "spdCorr"], ["cfgTankL", "tankL"]];
 function tankInfo() {
   $("tankInfo").textContent = tank.started
     ? `Desde el último lleno: ${tank.km.toFixed(1)} km y ${(tank.lraw * cfg.fcal).toFixed(2)} L estimados.`
@@ -1920,6 +1930,7 @@ function applyUpdate() {
   location.replace(location.pathname + "?v=" + Date.now().toString(36));
 }
 setTimeout(checkUpdate, 3000);
+setInterval(() => { if (performance.now() - GM.real < 1000) setVal("glon", GM.lon); }, 200);
 setInterval(checkUpdate, 5 * 60000);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkUpdate(); });
 
