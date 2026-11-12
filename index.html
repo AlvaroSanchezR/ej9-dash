@@ -42,7 +42,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--ui);margin:0;
 .cell .hd{font-family:var(--ui);font-weight:500;color:#e6e6e6}
 .cell .mx,.cell .mn{font-family:var(--ui);font-weight:500;color:#777}
 .cell .mn{bottom:3px;left:8px} .colR .cell .mn{left:auto;right:8px}
-.cell .v{font-family:var(--race);font-weight:600;font-size:clamp(24px,4.8vw,44px);line-height:.85;letter-spacing:.01em;margin-top:4px}
+.cell .v{font-family:var(--race);font-weight:600;font-size:clamp(20px,3.6vw,32px);line-height:.85;letter-spacing:.01em;margin-top:4px}
 .cell.warn .v{color:var(--amber)} .cell.crit .v{color:var(--red)}
 
 @media (orientation:portrait){
@@ -112,7 +112,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 /* Pantalla taller */
 .shop{height:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:8px 10px;padding-block:6px 22px;box-sizing:border-box}
 .shop .cell{border-bottom:1px solid var(--line)}
-.shop .cell .v{font-size:clamp(24px,4.4vw,42px)}
+.shop .cell .v{font-size:clamp(20px,3.4vw,32px)}
 @media (orientation:portrait){
   .shop{height:auto;grid-template-columns:1fr 1fr;grid-template-rows:none;grid-auto-rows:110px;padding-block:64px 30px}
   .street{height:auto;min-height:100%;padding-block:70px 30px}
@@ -410,7 +410,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v2.1 · 12/11/2026 19:50"; // se cambia con cada actualización
+const APP_VERSION = "v2.2 · 12/11/2026 19:48"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
