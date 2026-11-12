@@ -415,7 +415,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v3.3 · 12/11/2026 20:20"; // se cambia con cada actualización
+const APP_VERSION = "v3.4 · 12/11/2026 20:25"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -545,7 +545,7 @@ function drawIcon(k, cx, cy, size) {
 
 /* Estilos de esfera */
 const THEMES = {
-  blanca:  { n: "Blanca (HonDash)",        a: "#c9c9c9", b: "#f6f6f6", tick: "#111",    num: "#111",    halo: "#d4d4d4", glow: .5 },
+  blanca:  { n: "Blanca (HonDash)",        a: "#c9c9c9", b: "#f6f6f6", tick: "#111",    num: "#ffffff", halo: "#1c1c1c", nsw: 2, glow: .5 },
   negra:   { n: "Negra con números rojos", a: "#0b0b0b", b: "#222",    tick: "#e8e8e8", num: "#e3170a", halo: "#141414", glow: .12 },
   azul:    { n: "Azul años 90",            a: "#0b2563", b: "#1f56c4", tick: "#fff",    num: "#fff",    halo: "#15408f", glow: .25 },
   gris:    { n: "Gris grafito",            a: "#3c4449", b: "#545d63", tick: "#e8eaeb", num: "#14181b", halo: "#c9ced1", nsw: 1.6, glow: .22 },
