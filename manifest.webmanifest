@@ -1,7 +1,7 @@
 {
-  "name": "EJ9 Dash",
-  "short_name": "EJ9 Dash",
-  "description": "Cuadro digital OBD2 para el Civic EJ9",
+  "name": "Redline",
+  "short_name": "Redline",
+  "description": "Redline · cuadro digital OBD2 para el Civic EJ9",
   "display": "fullscreen",
   "orientation": "landscape",
   "background_color": "#000000",
