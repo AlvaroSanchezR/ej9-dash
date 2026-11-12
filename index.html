@@ -88,7 +88,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 .arcL{fill:none;stroke:#7a7a7a;stroke-width:2.5}
 .arcR{fill:none;stroke:#e3170a;stroke-width:3.5}
 .trk{fill:none;stroke:#1a1a1a;stroke-width:11}
-.endT{stroke:#8a8a8a;stroke-width:3;stroke-linecap:butt}
+.endT{stroke:#8a8a8a;stroke-width:3.5;stroke-linecap:butt}
 .endT.r{stroke:#e3170a;stroke-width:3.5}
 .fil{fill:none;stroke:var(--fg);stroke-width:11}
 .fil.warn{stroke:var(--amber)} .fil.crit{stroke:var(--red)}
@@ -415,7 +415,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v2.8 · 12/11/2026 20:15"; // se cambia con cada actualización
+const APP_VERSION = "v2.9 · 12/11/2026 20:20"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -601,19 +601,22 @@ function build() {
     el("path", { d: sArc(sd, R_ARC + 9, aRed, a.a1), class: "arcR" });
     el("path", { d: sArc(sd, R_BAR, a.a0, a.a1), class: "trk" });
     const fil = el("path", { d: "", class: "fil" });
-    [[a.a0, ""], [a.a1, " r"]].forEach(([ang, c]) => { const [x1, y1] = SP(sd, R_ARC - 7, ang), [x2, y2] = SP(sd, R_ARC + 12, ang); el("line", { x1, y1, x2, y2, class: "endT" + c }); });
-    // Etiquetas de máximo y mínimo junto a los extremos
-    const [mxX, mxY] = SP(sd, R_ARC, a.a1), [mnX, mnY] = SP(sd, R_ARC, a.a0);
-    const anc = a.side < 0 ? "start" : "end", dx = a.side < 0 ? 15 : -15;
-    arcTexts.push(el("text", { x: mxX + dx, y: mxY + 5, class: "lbl", "text-anchor": anc, "font-size": 14 }, a.max + (a.top ? " " + a.u : "")),
-                  el("text", { x: mnX + dx, y: mnY + 5, class: "lbl", "text-anchor": anc, "font-size": 14 }, a.min + (a.top ? "" : " " + a.u)));
+    // Extremos como en HonDash: raya horizontal hacia dentro (roja en el máximo) y la cifra a continuación
+    const anc = sd < 0 ? "start" : "end";
+    [[a.a0, "", a.min + (a.top ? "" : " " + a.u)], [a.a1, " r", a.max + (a.top ? " " + a.u : "")]].forEach(([ang, c, txt]) => {
+      const [ex, ey] = SP(sd, R_ARC + 11, ang), x2 = ex - sd * 18;
+      el("line", { x1: ex, y1: ey, x2, y2: ey, class: "endT" + c });
+      arcTexts.push(el("text", { x: x2 - sd * 4, y: ey + 4.5, class: "lbl", "text-anchor": anc, "font-size": 13 }, txt));
+    });
     // Valor y nombre dentro del arco
-    const mid = (a.a0 + a.a1) / 2, [vx, vy] = SP(sd, 182, mid);
-    const val = el("text", { x: vx, y: vy + (a.top ? 4 : 12), class: "dig", "font-size": 25 }, "-");
-    const [nx, ny] = SP(sd, ICONS[k] ? 246 : 238, mid);
+    // Valor y testigo por dentro de la barra, el testigo debajo del valor (como HonDash)
+    const at = f => a.a0 + f * (a.a1 - a.a0);
+    const [vx, vy] = SP(sd, 180, at(a.top ? 0.6 : 0.62));
+    const val = el("text", { x: vx, y: vy + 9, class: "dig", "font-size": 26 }, "-");
+    const [nx, ny] = SP(sd, 182, at(a.top ? 0.2 : 0.22));
     arcTexts.push(val);
-    if (ICONS[k]) drawIcon(k, nx, ny, 30);   // testigo dibujado en vez del nombre
-    else el("text", { x: nx, y: ny + 4, class: "lbl dim", "text-anchor": a.side < 0 ? "end" : "start", "font-size": 10, "letter-spacing": "1.5" }, a.s);
+    if (ICONS[k]) arcTexts.push(drawIcon(k, nx, ny, 28));   // testigo dibujado en vez del nombre
+    else arcTexts.push(el("text", { x: nx, y: ny + 4, class: "lbl dim", "text-anchor": "middle", "font-size": 10, "letter-spacing": "1.5" }, a.s));
     el("path", { d: sArc(sd, R_ARC - 10, a.a0, a.a1), class: "hit" }).addEventListener("click", () => openPicker("arc", i));
     R.arcs.push({ fil, val, a, k });
   });
