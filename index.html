@@ -106,8 +106,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 .box{fill:none;stroke:#bdbdbd;stroke-width:2}
 .gtxt{font-family:var(--race);font-weight:600;fill:var(--fg);text-anchor:middle;dominant-baseline:central;font-size:40px}
 .brand{font-family:var(--brand);font-weight:600;font-size:22px;fill:#8a8a8a;text-anchor:middle;letter-spacing:1px}
-.brand.cold{fill:#3b8cff;font-size:15px}
-.coldz{fill:#2f7bff;opacity:.45}
+.lbl.coldl{fill:#3b8cff}
 .hit{fill:none;stroke:transparent;stroke-width:46;cursor:pointer}
 .cell{cursor:pointer}
 
@@ -428,7 +427,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v4.8 · 12/11/2026 21:50"; // se cambia con cada actualización
+const APP_VERSION = "v4.9 · 12/11/2026 21:55"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -581,6 +580,7 @@ function build() {
   svg.innerHTML = "";
   MAXRPM = Math.ceil((cfg.red + 600) / 1000) * 1000;
   SENSORS.rpm.max = MAXRPM;
+  const RED = coldLim || cfg.red;   // con el aceite frío la zona roja empieza antes (como los BMW M)
   const N = nightNow;
   const T = THEMES[cfg.theme] || THEMES.blanca;
   const E = N && T === THEMES.blanca ? { a: "#2e3336", b: "#464c50", tick: "#dcdcdc", num: "#0c0c0c", halo: "#a8a8a8", nsw: 1.6, glow: .08 } : { ...T, glow: N ? .08 : T.glow };
@@ -656,8 +656,7 @@ function build() {
   el("circle", { cx: CX, cy: CY, r: R_FACE + 16, fill: "url(#halo)" });
   if (E.carbon) el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#carbon)" });
   el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#face)" });
-  el("path", { d: sector(R_IN + 14, R_FACE, rpmAngle(cfg.red), A_START + A_SPAN), fill: "url(#rz)" });
-  R.cold = el("path", { d: "", class: "coldz" }); R.coldLim = null;
+  el("path", { d: sector(R_IN + 14, R_FACE, rpmAngle(RED), A_START + A_SPAN), fill: "url(#rz)" });
   el("circle", { cx: CX, cy: CY, r: R_IN, fill: "var(--bg)" });
   el("circle", { cx: CX, cy: CY, r: R_IN, fill: "none", stroke: "#555", "stroke-width": 2 });
   arcTexts.forEach(t => svg.appendChild(t)); // nombres y valores de los arcos por encima de la esfera
@@ -667,10 +666,10 @@ function build() {
     const a = rpmAngle(v), major = v % 1000 === 0, half = v % 500 === 0;
     const r0 = major ? R_FACE - 21 : half ? R_FACE - 13 : R_FACE - 8;
     const [x1, y1] = P(r0, a), [x2, y2] = P(R_FACE - 2, a);
-    el("line", { x1, y1, x2, y2, class: "tick" + (v > cfg.red ? " rz" : "") + (major || half ? "" : " mn"), style: v > cfg.red ? "" : "stroke:" + E.tick, "stroke-width": major ? 4.5 : half ? 3.2 : 2.4 });
-    if (major) { const [tx, ty] = P(R_FACE - 35, a); nums.push(el("text", { x: tx, y: ty, class: "num", "font-size": 30, style: "fill:" + (v > cfg.red && E.num === "#e3170a" ? "#fff" : E.num) + (E.nsw ? `;stroke-width:${E.nsw}px` : ""), stroke: v > cfg.red ? (E.nsw ? "#ff4a3d" : N ? "#5e110b" : "#e3170a") : E.halo }, v / 1000)); }
+    el("line", { x1, y1, x2, y2, class: "tick" + (v > RED ? " rz" : "") + (major || half ? "" : " mn"), style: v > RED ? "" : "stroke:" + E.tick, "stroke-width": major ? 4.5 : half ? 3.2 : 2.4 });
+    if (major) { const [tx, ty] = P(R_FACE - 35, a); nums.push(el("text", { x: tx, y: ty, class: "num", "font-size": 30, style: "fill:" + (v > RED && E.num === "#e3170a" ? "#fff" : E.num) + (E.nsw ? `;stroke-width:${E.nsw}px` : ""), stroke: v > RED ? (E.nsw ? "#ff4a3d" : N ? "#5e110b" : "#e3170a") : E.halo }, v / 1000)); }
   }
-  R.brand = el("text", { x: CX, y: CY + 146, class: "brand" }, cfg.name || "");
+  el("text", { x: CX, y: CY + 146, class: "brand" }, cfg.name || "");
 
   // Lecturas centrales
   // Luces de cambio (verde, ámbar y rojo) arriba del círculo central
@@ -681,7 +680,7 @@ function build() {
   R.vtec = el("text", { x: CX, y: 141, class: "vtec" }, "VTEC");
   if (!vOn) R.vtec.setAttribute("display", "none");
   R.rpm = el("text", { x: CX, y: ry, class: "dig", "font-size": 38 }, "0");
-  el("text", { x: CX, y: ry + 12, class: "lbl", "text-anchor": "middle", "font-size": 11 }, "rpm");
+  el("text", { x: CX, y: ry + 12, class: "lbl" + (coldLim ? " coldl" : ""), "text-anchor": "middle", "font-size": 11 }, coldLim ? "aceite frío" : "rpm");
   R.spd = el("text", { x: CX, y: 247, class: "dig", "font-size": 82 }, "0");
   el("text", { x: CX, y: 259, class: "lbl", "text-anchor": "middle", "font-size": 11 }, "km/h");
   el("line", { x1: CX - 84, y1: 264, x2: CX + 84, y2: 264, stroke: "#e6e6e6", "stroke-width": 1 });
@@ -745,7 +744,7 @@ let odo = { km: null, sent: null }, odoCar = false;
 /* ---------- Aceite frío: límite de vueltas hasta que el aceite coge temperatura ----------
    Si el coche no da la temperatura del aceite (el Civic no la da), se estima: el aceite sigue al agua
    pero mucho más despacio (unos 6 min de retraso), y con más vueltas se calienta antes. */
-let oilEst = null, coldLim = null, oilT = 0;
+let oilEst = null, coldLim = null, oilT = 0, builtCold = null;
 setInterval(() => {
   const now = performance.now(), dt = oilT ? (now - oilT) / 1000 : 0; oilT = now;
   let oil = V.oil;
@@ -762,13 +761,8 @@ setInterval(() => {
   // < 40 °C: máximo 4000 rpm · de 40 a 80 °C sube poco a poco · ≥ 80 °C: sin límite
   const lim = oil == null || oil >= 80 ? null : Math.round((4000 + Math.max(0, oil - 40) / 40 * (cfg.red - 4000)) / 100) * 100;
   coldLim = lim != null && lim < cfg.red ? lim : null;
-  if (coldLim && (V.rpm || 0) > coldLim + 200) alertNow("cold", `Aceite frío: no pases de ${coldLim} rpm`, "warn");
-  if (R.cold && R.coldLim !== coldLim) {
-    R.coldLim = coldLim;
-    R.cold.setAttribute("d", coldLim ? sector(R_IN + 14, R_FACE, rpmAngle(coldLim), rpmAngle(cfg.red)) : "");
-    R.brand.classList.toggle("cold", !!coldLim);
-    R.brand.textContent = coldLim ? `ACEITE FRÍO · ${coldLim}` : (cfg.name || "");
-  }
+  if (coldLim && (V.rpm || 0) > coldLim + 200 && Date.now() - (lastAlert.cold || 0) > 20000) { lastAlert.cold = Date.now(); beep("warn"); }
+  if (coldLim !== builtCold) { builtCold = coldLim; if (cfg.view === "full") build(); }   // la zona roja baja o sube con el aceite
 }, 1000);
 try { Object.assign(odo, JSON.parse(localStorage.getItem("ej9odo") || "{}")); } catch (e) {}
 const saveOdo = () => { try { localStorage.setItem("ej9odo", JSON.stringify(odo)); } catch (e) {} };
