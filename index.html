@@ -84,12 +84,10 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 .lbl{font-family:var(--lab);fill:var(--fg);font-weight:500}
 .eng path{fill:none;stroke:#4a4a4a;stroke-width:2;stroke-linejoin:round;transition:all .4s}
 .eng.mil path{fill:#ffb020;stroke:#ffb020;filter:drop-shadow(0 0 6px rgba(255,176,32,.8))}
-.obdp rect{fill:rgba(255,255,255,.04);stroke:#3a3a3a;stroke-width:1.2;transition:all .4s}
-.obdp circle{fill:#555;transition:fill .4s}
-.obdp text{font-family:var(--race);font-weight:600;font-size:8.5px;letter-spacing:.06em;fill:#777}
-.obdp.on rect{stroke:#3ddc84;fill:rgba(61,220,132,.1)} .obdp.on circle{fill:#3ddc84;animation:obdpulse 1.6s ease-in-out infinite} .obdp.on text{fill:#3ddc84}
-.obdp.demo rect{stroke:#ffb020;fill:rgba(255,176,32,.1)} .obdp.demo circle{fill:#ffb020} .obdp.demo text{fill:#ffb020}
-@keyframes obdpulse{50%{opacity:.25}}
+#obdDot{position:fixed;z-index:15;top:calc(4px + env(safe-area-inset-top,0px));right:calc(4px + env(safe-area-inset-right,0px));width:7px;height:7px;border-radius:50%;background:#444;pointer-events:none;transition:background .4s}
+#obdDot.demo{background:#ffb020}
+#obdDot.on{background:#3ddc84;box-shadow:0 0 6px #3ddc84;animation:obdpulse 1.6s ease-in-out infinite}
+@keyframes obdpulse{50%{opacity:.35}}
 .lim{font-family:var(--race);font-weight:600;fill:var(--fg);letter-spacing:.04em;font-variant-numeric:tabular-nums}
 .lbl.dim{fill:var(--dim)}
 .dig{font-family:var(--race);font-weight:600;fill:var(--fg);text-anchor:middle}
@@ -247,6 +245,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 </nav>
 
 <button class="menu" id="menuBtn" aria-label="Menú"><i></i></button>
+<i id="obdDot" title="Gris: sin conexión · Ámbar: demo · Verde: OBD conectado"></i>
 
 <div class="toast" id="toast" hidden></div>
 <div class="rec" id="recBadge" hidden>REC 0:00</div>
@@ -425,7 +424,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v4.2 · 12/11/2026 20:50"; // se cambia con cada actualización
+const APP_VERSION = "v4.3 · 12/11/2026 21:05"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -719,11 +718,6 @@ function build() {
   // Testigo de motor: apagado (contorno gris) si todo va bien, ámbar encendido si hay avería
   R.eng = el("g", { transform: "translate(478 203) scale(.95)", class: "eng" });
   el("path", { d: "M6 10h6V6h12v4h6l4 4h4v-4h4v18h-4v-4h-4v6H14l-4-4H6v-6H2v-6h4z" }, R.eng);
-  // Pastilla de estado de la conexión: punto + texto
-  R.obd = el("g", { class: "obdp" });
-  el("rect", { x: 481, y: 242, width: 37, height: 14, rx: 7 }, R.obd);
-  R.obdDot = el("circle", { cx: 487.5, cy: 249, r: 2.3 }, R.obd);
-  R.obdTxt = el("text", { x: 504.5, y: 252.2, "text-anchor": "middle" }, "OFF", R.obd);
   status($("stat").textContent, mode);
   render();
 }
@@ -1028,8 +1022,7 @@ let mode = "";
 function status(txt, m) {
   mode = m || ""; $("stat").textContent = txt;
   if (R.eng) {
-    R.obd.setAttribute("class", "obdp " + (mode === "on" ? "on" : mode === "demo" ? "demo" : ""));
-    R.obdTxt.textContent = mode === "on" ? "OBD" : mode === "demo" ? "DEMO" : "OFF";
+    $("obdDot").className = mode === "on" ? "on" : mode === "demo" ? "demo" : "";
     if (mode !== "on") R.eng.classList.remove("mil");
   }
 }
