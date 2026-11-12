@@ -82,7 +82,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 .tick{stroke:var(--ink)} .tick.rz{stroke:#fff} .tick.mn{opacity:.75}
 .num{font-family:var(--race);font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke-width:7px;stroke-linejoin:round}
 .lbl{font-family:var(--lab);fill:var(--fg);font-weight:500}
-.eng path{fill:none;stroke:#4a4a4a;stroke-width:2;stroke-linejoin:round;transition:all .4s}
+.eng path{fill:none;stroke:none;transition:all .4s}
 .eng.mil path{fill:#ffb020;stroke:#ffb020;filter:drop-shadow(0 0 6px rgba(255,176,32,.8))}
 #obdDot{position:fixed;z-index:15;top:calc(4px + env(safe-area-inset-top,0px));right:calc(4px + env(safe-area-inset-right,0px));width:7px;height:7px;border-radius:50%;background:#444;pointer-events:none;transition:background .4s}
 #obdDot.demo{background:#ffb020}
@@ -424,7 +424,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v4.3 · 12/11/2026 21:05"; // se cambia con cada actualización
+const APP_VERSION = "v4.4 · 12/11/2026 21:15"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
