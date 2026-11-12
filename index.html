@@ -53,8 +53,8 @@ body{background:var(--bg);color:var(--fg);font-family:var(--ui);margin:0;
   .cell{min-height:96px;flex:none}
 }
 
-.menu{position:fixed;z-index:20;top:calc(8px + env(safe-area-inset-top,0px));left:calc(8px + env(safe-area-inset-left,0px));
-  width:48px;height:48px;border-radius:50%;border:0;background:rgba(38,38,38,.85);box-shadow:0 0 24px 4px rgba(227,23,10,.3);
+.menu{position:fixed;z-index:20;bottom:calc(6px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);
+  width:40px;height:40px;border-radius:50%;border:0;background:rgba(38,38,38,.85);box-shadow:0 0 24px 4px rgba(227,23,10,.3);
   display:grid;place-items:center;cursor:pointer;padding:0;opacity:.75}
 .menu i{display:block;width:20px;height:3px;background:var(--fg);border-radius:2px;box-shadow:0 7px 0 var(--fg),0 -7px 0 var(--fg)}
 .menu:focus-visible,button:focus-visible{outline:2px solid var(--red);outline-offset:3px}
@@ -81,6 +81,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 .tick{stroke:var(--ink)} .tick.rz{stroke:#fff} .tick.mn{opacity:.75}
 .num{font-family:var(--race);font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke-width:7px;stroke-linejoin:round}
 .lbl{font-family:var(--lab);fill:var(--fg);font-weight:500}
+.lim{font-family:var(--race);font-weight:600;fill:var(--fg);letter-spacing:.04em;font-variant-numeric:tabular-nums}
 .lbl.dim{fill:var(--dim)}
 .dig{font-family:var(--race);font-weight:600;fill:var(--fg);text-anchor:middle}
 .vtec{font-family:var(--race);font-weight:700;font-size:15px;letter-spacing:3px;fill:#2a2a2a;text-anchor:middle}
@@ -415,7 +416,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v3.7 · 12/11/2026 20:25"; // se cambia con cada actualización
+const APP_VERSION = "v3.8 · 12/11/2026 20:40"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -613,8 +614,10 @@ function build() {
     el("path", { d: sArc(sd, R_BAR, a.s0, a.s1), class: "trk", "clip-path": `url(#bc${i})` });
     const fil = el("path", { d: "", class: "fil", "clip-path": `url(#bc${i})` });
     const anc = sd < 0 ? "start" : "end";
-    [[p0x, p0y, a.min + (a.top ? "" : " " + a.u)], [p1x, p1y, a.max + (a.top ? " " + a.u : "")]].forEach(([ex, ey, txt]) => {
-      arcTexts.push(el("text", { x: ex - sd * (FL + 4), y: ey + 4.5, class: "lbl", "text-anchor": anc, "font-size": 13 }, txt));
+    // Extremo exterior: texto a continuación de la pestaña. Extremo interior (junto a la esfera): encima/debajo de la pestaña, sin meterse en el reloj
+    [[p0x, p0y, a.min + (a.top ? "" : " " + a.u), !a.top], [p1x, p1y, a.max + (a.top ? " " + a.u : ""), a.top]].forEach(([ex, ey, txt, outer]) => {
+      const at = outer ? { x: ex - sd * (FL + 4), y: ey + 4.5, "text-anchor": anc } : { x: ex - sd * (FL - 1), y: a.top ? ey + 14 : ey - 5, "text-anchor": sd < 0 ? "end" : "start" };
+      arcTexts.push(el("text", { ...at, class: "lim", "font-size": outer ? 13 : 11.5 }, txt));
     });
     // Valor y nombre dentro del arco
     // Valor y testigo por dentro de la barra, el testigo debajo del valor (como HonDash)
@@ -698,7 +701,7 @@ function build() {
   R.gear = el("text", { x: 30, y: 221, class: "gtxt" }, "N");
   R.eng = el("g", { transform: "translate(472 204)" });
   el("path", { d: "M6 10h6V6h12v4h6l4 4h4v-4h4v18h-4v-4h-4v6H14l-4-4H6v-6H2v-6h4z", fill: "#3a3a3a" }, R.eng);
-  R.obdTxt = el("text", { x: 492, y: 252, class: "lbl dim", "text-anchor": "middle", "font-size": 10 }, "OFF");
+  R.obdTxt = el("text", { x: 496, y: 252, class: "lbl dim", "text-anchor": "middle", "font-size": 10 }, "OFF");
   render();
 }
 
