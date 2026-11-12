@@ -8,13 +8,14 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Roboto:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Roboto:wght@500;700;900&family=Teko:wght@500;600;700&family=Saira+Condensed:wght@500;600;700&display=swap">
 <style>
 /* Layout: estilo HonDash — reloj central de esfera blanca con cuatro arcos, columnas de gráficas de historial a los lados, menú flotante */
 :root{
   --bg:#000; --fg:#f4f4f4; --dim:#9a9a9a; --line:#2c2c2c; --face:#f2f2f2; --ink:#111;
   --red:#e3170a; --amber:#ffb020; --track:#262626;
   --ui:"Roboto",system-ui,sans-serif; --brand:"Rajdhani",system-ui,sans-serif;
+  --race:"Teko","Rajdhani",system-ui,sans-serif; --lab:"Saira Condensed","Roboto Condensed",system-ui,sans-serif;
   color-scheme:dark;
 }
 [hidden]{display:none!important}
@@ -25,7 +26,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--ui);margin:0;
 .app{height:100%;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:6px;position:relative}
 .center{height:100%;display:flex;align-items:center;justify-content:center;min-width:0}
 .center svg{height:100%;max-height:100%;width:auto;max-width:100%;display:block;aspect-ratio:520/440}
-.col{display:flex;flex-direction:column;gap:2px;min-width:0;padding-block:10px}
+.col{display:flex;flex-direction:column;gap:6px;min-width:0;padding-block:10px}
 .colR{padding-right:14px} /* margen extra para los bordes curvos de la pantalla */
 .cell{flex:1;position:relative;min-height:0;overflow:hidden}
 .cell canvas{position:absolute;left:0;right:0;bottom:0;width:100%;height:72%;display:block}
@@ -35,6 +36,13 @@ body{background:var(--bg);color:var(--fg);font-family:var(--ui);margin:0;
 .cell .mn{position:absolute;z-index:1;bottom:0;left:0;font-size:clamp(7px,1.1vw,9px);color:var(--dim)}
 .colR .cell .hd,.colR .cell .mx{text-align:right}
 .colR .cell .mn{left:auto;right:0}
+/* Telemetría estilo competición */
+.col .cell,.shop .cell{background:linear-gradient(180deg,#101010,#050505);border:1px solid #1f1f1f;border-radius:6px;padding:5px 8px 4px}
+.cell canvas{border-radius:0 0 5px 5px}
+.cell .hd{font-family:var(--lab);font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:#cfcfcf}
+.cell .mx,.cell .mn{font-family:var(--lab);font-weight:500;color:#6d6d6d}
+.cell .mn{bottom:3px;left:8px} .colR .cell .mn{left:auto;right:8px}
+.cell .v{font-family:var(--race);font-weight:600;font-size:clamp(24px,4.8vw,44px);line-height:.85;letter-spacing:.01em;margin-top:4px}
 .cell.warn .v{color:var(--amber)} .cell.crit .v{color:var(--red)}
 
 @media (orientation:portrait){
@@ -70,19 +78,19 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 .confirm button{flex:1}
 
 /* SVG */
-.tick{stroke:var(--ink)} .tick.rz{stroke:#fff}
-.num{font-family:var(--ui);font-weight:900;fill:var(--ink);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke-width:7px;stroke-linejoin:round}
-.lbl{font-family:var(--ui);fill:var(--fg);font-weight:500}
+.tick{stroke:var(--ink)} .tick.rz{stroke:#fff} .tick.mn{opacity:.55}
+.num{font-family:var(--race);font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke-width:7px;stroke-linejoin:round}
+.lbl{font-family:var(--lab);fill:var(--fg);font-weight:600}
 .lbl.dim{fill:var(--dim)}
-.dig{font-family:var(--ui);font-weight:700;fill:var(--fg);text-anchor:middle}
-.vtec{font-family:var(--ui);font-weight:900;font-style:italic;font-size:15px;letter-spacing:1px;fill:#2a2a2a;text-anchor:middle}
+.dig{font-family:var(--race);font-weight:600;fill:var(--fg);text-anchor:middle}
+.vtec{font-family:var(--race);font-weight:700;font-size:15px;letter-spacing:3px;fill:#2a2a2a;text-anchor:middle}
 .vtec.on{fill:var(--red)}
-.trk{fill:none;stroke:var(--track);stroke-width:13}
-.fil{fill:none;stroke:var(--fg);stroke-width:13}
+.trk{fill:none;stroke:var(--track);stroke-width:15;stroke-dasharray:5 2.5}
+.fil{fill:none;stroke:var(--fg);stroke-width:15;stroke-dasharray:5 2.5}
 .fil.warn{stroke:var(--amber)} .fil.crit{stroke:var(--red)}
-.cap{fill:none;stroke:var(--red);stroke-width:13}
-.box{fill:none;stroke:#cfcfcf;stroke-width:3}
-.gtxt{font-family:var(--ui);font-weight:700;fill:var(--fg);text-anchor:middle;dominant-baseline:central;font-size:36px}
+.cap{fill:none;stroke:var(--red);stroke-width:15}
+.box{fill:#0b0b0b;stroke:var(--red);stroke-width:2.5}
+.gtxt{font-family:var(--race);font-weight:600;fill:var(--fg);text-anchor:middle;dominant-baseline:central;font-size:50px}
 .brand{font-family:var(--brand);font-weight:600;font-size:22px;fill:#8a8a8a;text-anchor:middle;letter-spacing:1px}
 .hit{fill:none;stroke:transparent;stroke-width:46;cursor:pointer}
 .cell{cursor:pointer}
@@ -104,7 +112,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 /* Pantalla taller */
 .shop{height:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:8px 10px;padding-block:6px 22px;box-sizing:border-box}
 .shop .cell{border-bottom:1px solid var(--line)}
-.shop .cell .v{font-size:clamp(16px,3.6vw,30px)}
+.shop .cell .v{font-size:clamp(24px,4.4vw,42px)}
 @media (orientation:portrait){
   .shop{height:auto;grid-template-columns:1fr 1fr;grid-template-rows:none;grid-auto-rows:110px;padding-block:64px 30px}
   .street{height:auto;min-height:100%;padding-block:70px 30px}
@@ -402,7 +410,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v1.9 · 12/11/2026 19:45"; // se cambia con cada actualización
+const APP_VERSION = "v2.0 · 12/11/2026 20:10"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -517,8 +525,15 @@ function build() {
   const E = N && T === THEMES.blanca ? { a: "#1f1f1f", b: "#333", tick: "#dcdcdc", num: "#dcdcdc", halo: "#262626", glow: .08 } : { ...T, glow: N ? .08 : T.glow };
   const defs = el("defs", {});
   const rg = el("radialGradient", { id: "halo" }, defs);
-  el("stop", { offset: "82%", "stop-color": "#fff", "stop-opacity": String(E.glow) }, rg);
-  el("stop", { offset: "100%", "stop-color": "#fff", "stop-opacity": "0" }, rg);
+  el("stop", { offset: "82%", "stop-color": "#ff2a1a", "stop-opacity": String(E.glow * 0.7) }, rg);
+  el("stop", { offset: "100%", "stop-color": "#ff2a1a", "stop-opacity": "0" }, rg);
+  // brillo para aguja, anillo y luces
+  const gf = el("filter", { id: "glow", x: "-50%", y: "-50%", width: "200%", height: "200%" }, defs);
+  el("feGaussianBlur", { stdDeviation: 2.2, result: "b" }, gf);
+  const fm = el("feMerge", {}, gf); el("feMergeNode", { in: "b" }, fm); el("feMergeNode", { in: "SourceGraphic" }, fm);
+  // bisel metálico alrededor de la esfera
+  const bz = el("linearGradient", { id: "bezel", x1: "0", y1: "0", x2: "0", y2: "1" }, defs);
+  el("stop", { offset: "0", "stop-color": "#7a7a7a" }, bz); el("stop", { offset: ".45", "stop-color": "#151515" }, bz); el("stop", { offset: "1", "stop-color": "#505050" }, bz);
   const fg = el("radialGradient", { id: "face" }, defs);
   el("stop", { offset: "70%", "stop-color": E.a, "stop-opacity": E.carbon ? ".55" : "1" }, fg);
   el("stop", { offset: "100%", "stop-color": E.b, "stop-opacity": E.carbon ? ".35" : "1" }, fg);
@@ -549,19 +564,21 @@ function build() {
     el("text", { x: mnX + dx, y: mnY + 6, class: "lbl", "text-anchor": anc, "font-size": 15 }, a.min + (a.top ? "" : " " + a.u));
     // Valor y nombre dentro del arco
     const mid = (a.a0 + a.a1) / 2, [vx, vy] = P(186, mid);
-    const val = el("text", { x: vx, y: vy + (a.top ? 2 : 10), class: "dig", "font-size": 22 }, "-");
-    arcTexts.push(val, el("text", { x: vx + (a.side < 0 ? 8 : -8), y: vy + (a.top ? 18 : -12), class: "lbl dim", "text-anchor": a.side < 0 ? "end" : "start", "font-size": 9 }, a.s));
+    const val = el("text", { x: vx, y: vy + (a.top ? 4 : 12), class: "dig", "font-size": 25 }, "-");
+    arcTexts.push(val, el("text", { x: vx + (a.side < 0 ? 8 : -8), y: vy + (a.top ? 18 : -14), class: "lbl dim", "text-anchor": a.side < 0 ? "end" : "start", "font-size": 10, "letter-spacing": "1" }, a.s));
     el("path", { d: arc(R_ARC - 10, a.a0, a.a1), class: "hit" }).addEventListener("click", () => openPicker("arc", i));
     R.arcs.push({ fil, val, a, k });
   });
 
   // Esfera
-  el("circle", { cx: CX, cy: CY, r: R_FACE + 12, fill: "url(#halo)" });
+  el("circle", { cx: CX, cy: CY, r: R_FACE + 26, fill: "url(#halo)" });
+  el("circle", { cx: CX, cy: CY, r: R_FACE + 8, fill: "url(#bezel)" });
+  el("circle", { cx: CX, cy: CY, r: R_FACE + 8, fill: "none", stroke: "#e3170a", "stroke-width": 1.5, opacity: .9 });
   if (E.carbon) el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#carbon)" });
   el("circle", { cx: CX, cy: CY, r: R_FACE, fill: "url(#face)" });
   el("path", { d: sector(R_IN + 14, R_FACE, rpmAngle(cfg.red), A_START + A_SPAN), fill: "url(#rz)" });
   el("circle", { cx: CX, cy: CY, r: R_IN, fill: "var(--bg)" });
-  el("circle", { cx: CX, cy: CY, r: R_IN, fill: "none", stroke: "#555", "stroke-width": 2 });
+  el("circle", { cx: CX, cy: CY, r: R_IN, fill: "none", stroke: "#e3170a", "stroke-width": 2, filter: "url(#glow)" });
   arcTexts.forEach(t => svg.appendChild(t)); // nombres y valores de los arcos por encima de la esfera
 
   const nums = [];
@@ -569,28 +586,35 @@ function build() {
     const a = rpmAngle(v), major = v % 1000 === 0, half = v % 500 === 0;
     const r0 = major ? R_FACE - 24 : half ? R_FACE - 16 : R_FACE - 10;
     const [x1, y1] = P(r0, a), [x2, y2] = P(R_FACE - 2, a);
-    el("line", { x1, y1, x2, y2, class: "tick" + (v > cfg.red ? " rz" : ""), style: v > cfg.red ? "" : "stroke:" + E.tick, "stroke-width": major ? 4 : half ? 2.5 : 1.5 });
-    if (major) { const [tx, ty] = P(R_FACE - 42, a); nums.push(el("text", { x: tx, y: ty, class: "num", "font-size": 30, style: "fill:" + (v > cfg.red && E.num === "#e3170a" ? "#fff" : E.num), stroke: v > cfg.red ? (N ? "#5e110b" : "#e3170a") : E.halo }, v / 1000)); }
+    el("line", { x1, y1, x2, y2, class: "tick" + (v > cfg.red ? " rz" : "") + (major || half ? "" : " mn"), style: v > cfg.red ? "" : "stroke:" + E.tick, "stroke-width": major ? 4 : half ? 2.5 : 1.5 });
+    if (major) { const [tx, ty] = P(R_FACE - 42, a); nums.push(el("text", { x: tx, y: ty + 2, class: "num", "font-size": 40, style: "fill:" + (v > cfg.red && E.num === "#e3170a" ? "#fff" : E.num), stroke: v > cfg.red ? (N ? "#5e110b" : "#e3170a") : E.halo }, v / 1000)); }
   }
   el("text", { x: CX, y: CY + 146, class: "brand" }, cfg.name || "");
 
   // Lecturas centrales
-  R.vtec = el("text", { x: CX, y: 128, class: "vtec" }, "VTEC");
-  R.rpm = el("text", { x: CX, y: 155, class: "dig", "font-size": 28 }, "0");
-  el("text", { x: CX, y: 167, class: "lbl", "text-anchor": "middle", "font-size": 10 }, "rpm");
-  R.spd = el("text", { x: CX, y: 222, class: "dig", "font-size": 62 }, "0");
-  el("text", { x: CX, y: 236, class: "lbl", "text-anchor": "middle", "font-size": 10 }, "km/h");
-  el("line", { x1: CX - 80, y1: 242, x2: CX + 80, y2: 242, stroke: "#e6e6e6", "stroke-width": 1.5 });
+  // Luces de cambio (verde, ámbar y rojo) arriba del círculo central
+  R.leds = [];
+  const LEDC = ["#2bd96b", "#2bd96b", "#2bd96b", "#2bd96b", "#ffb020", "#ffb020", "#ffb020", "#ffb020", "#ff2a1a", "#ff2a1a", "#ff2a1a"];
+  LEDC.forEach((c, i) => { const [lx, ly] = P(104, 245 + i * 5); R.leds.push(el("circle", { cx: lx, cy: ly, r: 4.2, fill: "#161616", stroke: "#2b2b2b", "stroke-width": 1, "data-c": c })); });
+  const vOn = cfg.vtec > 0, ry = vOn ? 171 : 166;   // el rótulo VTEC solo sale si el motor lo tiene
+  R.vtec = el("text", { x: CX, y: 143, class: "vtec" }, "VTEC");
+  if (!vOn) R.vtec.setAttribute("display", "none");
+  R.rpm = el("text", { x: CX, y: ry, class: "dig", "font-size": 34 }, "0");
+  el("text", { x: CX, y: ry + 10, class: "lbl", "text-anchor": "middle", "font-size": 8, "letter-spacing": "2" }, "RPM");
+  R.spd = el("text", { x: CX, y: 238, class: "dig", "font-size": 70 }, "0");
+  el("text", { x: CX, y: 249, class: "lbl", "text-anchor": "middle", "font-size": 8, "letter-spacing": "2" }, "KM/H");
+  el("line", { x1: CX - 78, y1: 254, x2: CX + 78, y2: 254, stroke: "#e3170a", "stroke-width": 1.5 });
   R.trip = {};
   [["dist", "Viaje"], ["dur", "Duración"], ["vavg", "Vel. media"], ["cons", "Consumo medio"], ["lit", "Gastado"], ["cost", "Coste"]].forEach(([k, n], i) => {
-    const y = 255 + i * 12;
+    const y = 265 + i * 10.8;
     el("text", { x: CX - 4, y, class: "lbl", "text-anchor": "end", "font-size": 10 }, n);
     R.trip[k] = el("text", { x: CX + 4, y, class: "lbl", "font-size": 10, "font-weight": 700 }, "-");
   });
 
   // Aguja
-  R.needle = el("g", {});
-  el("polygon", { points: `${CX + R_IN + 2},${CY - 3} ${CX + R_FACE - 4},${CY - 1} ${CX + R_FACE - 4},${CY + 1} ${CX + R_IN + 2},${CY + 3}`, fill: "var(--red)" }, R.needle);
+  R.needle = el("g", { filter: "url(#glow)" });
+  el("polygon", { points: `${CX + R_IN + 2},${CY - 3.5} ${CX + R_FACE - 4},${CY - 1} ${CX + R_FACE - 4},${CY + 1} ${CX + R_IN + 2},${CY + 3.5}`, fill: "var(--red)" }, R.needle);
+  el("line", { x1: CX + R_IN + 8, y1: CY, x2: CX + R_FACE - 10, y2: CY, stroke: "#fff", "stroke-width": .8, opacity: .85 }, R.needle);
   nums.forEach(n => svg.appendChild(n)); // los números por encima de la aguja
 
   // Marcha y testigo de motor/OBD
@@ -695,12 +719,22 @@ function anim(t) {
   // Solo se toca la pantalla cuando algo cambia de verdad (ahorra batería sin perder fluidez)
   const txt = Math.round(dispRpm / 10) * 10;
   if (R.needle && cfg.view === "full") {
-    if (AC.el !== R.needle) { AC.el = R.needle; AC.ang = AC.hot = AC.txt = AC.vtec = null; }
+    if (AC.el !== R.needle) { AC.el = R.needle; AC.ang = AC.hot = AC.txt = AC.vtec = AC.led = null; }
     const ang = rpmAngle(dispRpm).toFixed(2), hot = dispRpm >= cfg.shift, vt = cfg.vtec > 0 && dispRpm >= cfg.vtec;
     if (ang !== AC.ang) { AC.ang = ang; R.needle.setAttribute("transform", `rotate(${ang} ${CX} ${CY})`); }
     if (hot !== AC.hot) { AC.hot = hot; R.needle.firstChild.setAttribute("fill", hot ? "#ff5a4d" : "var(--red)"); }
     if (txt !== AC.txt) { AC.txt = txt; R.rpm.textContent = txt; }
     if (vt !== AC.vtec) { AC.vtec = vt; R.vtec.classList.toggle("on", vt); }
+    const n = R.leds.length, led = hot ? n + 1 : Math.max(0, Math.min(n, Math.floor((dispRpm - (cfg.shift - 2000)) / 2000 * n)));
+    if (led !== AC.led) {
+      AC.led = led;
+      R.leds.forEach((c, i) => {
+        const on = i < led;
+        c.setAttribute("fill", on ? (led > n ? "#ff2a1a" : c.dataset.c) : "#161616");
+        c.setAttribute("stroke", on ? "none" : "#2b2b2b");
+        c.setAttribute("filter", on ? "url(#glow)" : "");
+      });
+    }
   }
   if (cfg.view === "street") {
     const lit = Math.round(Math.min(dispRpm, MAXRPM) / MAXRPM * SEGS.length);
@@ -802,19 +836,27 @@ function drawChart(c, k) {
   if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
   const ctx = c.getContext("2d"), data = H[k] || [];
   ctx.clearRect(0, 0, w, h);
-  ctx.strokeStyle = "#2c2c2c"; ctx.lineWidth = dpr;
-  ctx.beginPath(); ctx.moveTo(0, h - dpr / 2); ctx.lineTo(w, h - dpr / 2); ctx.stroke();
+  const y = v => h - Math.max(0, Math.min(1, (v - g.min) / (g.max - g.min))) * (h - 4 * dpr) - 2 * dpr;
+  // rejilla fina, como en un programa de telemetría
+  ctx.lineWidth = dpr; ctx.strokeStyle = "#1c1c1c";
+  for (let i = 1; i < 4; i++) { const gy = Math.round(h * i / 4) + .5; ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
+  for (let i = 1; i < 6; i++) { const gx = Math.round(w * i / 6) + .5; ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
+  if (g.min < 0 && g.max > 0) { ctx.setLineDash([4 * dpr, 4 * dpr]); ctx.strokeStyle = "#3a3a3a"; ctx.beginPath(); ctx.moveTo(0, y(0)); ctx.lineTo(w, y(0)); ctx.stroke(); ctx.setLineDash([]); }
   if (data.length < 2) return;
-  const y = v => h - Math.max(0, Math.min(1, (v - g.min) / (g.max - g.min))) * (h - 2 * dpr) - dpr;
   const step = w / (HLEN - 1), x0 = w - (data.length - 1) * step;
+  const st = stateOf(k, data[data.length - 1]), col = st === "crit" ? "255,42,26" : st === "warn" ? "255,176,32" : "255,59,46";
   ctx.beginPath(); ctx.moveTo(x0, h);
   data.forEach((v, i) => ctx.lineTo(x0 + i * step, y(v)));
   ctx.lineTo(w, h); ctx.closePath();
   const gr = ctx.createLinearGradient(0, 0, 0, h);
-  gr.addColorStop(0, "rgba(200,20,10,.85)"); gr.addColorStop(1, "rgba(90,6,4,.55)");
+  gr.addColorStop(0, `rgba(${col},.45)`); gr.addColorStop(1, `rgba(${col},0)`);
   ctx.fillStyle = gr; ctx.fill();
   ctx.beginPath(); data.forEach((v, i) => i ? ctx.lineTo(x0 + i * step, y(v)) : ctx.moveTo(x0, y(v)));
-  ctx.strokeStyle = "#ff4a3d"; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
+  ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = 2 * dpr; ctx.lineJoin = "round";
+  ctx.shadowColor = `rgba(${col},.8)`; ctx.shadowBlur = 6 * dpr; ctx.stroke(); ctx.shadowBlur = 0;
+  // punto del valor actual
+  const ly = y(data[data.length - 1]);
+  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(w - 3 * dpr, ly, 2.6 * dpr, 0, Math.PI * 2); ctx.fill();
 }
 
 function render() {
@@ -1312,6 +1354,7 @@ function setView(v) {
   [...$("dots").children].forEach(b => b.classList.toggle("on", b.dataset.v === v));
   showDots();
   render();
+  if (v === "g") setTimeout(() => { startGSensor(); setTimeout(gHelp, 1500); }, 1200);
 }
 let dotsT = 0;
 function showDots() { $("dots").classList.add("show"); clearTimeout(dotsT); dotsT = setTimeout(() => $("dots").classList.remove("show"), 2500); }
@@ -1557,11 +1600,27 @@ function screenRight() {
   return a === 90 ? [0, -1, 0] : a === 270 || a === -90 ? [0, 1, 0] : a === 180 ? [-1, 0, 0] : [1, 0, 0];
 }
 window.addEventListener("devicemotion", e => {
-  const ig = e.accelerationIncludingGravity;
-  if (ig && ig.x != null) GM.rawG = [ig.x, ig.y, ig.z];
+  const ig = e.accelerationIncludingGravity, a = e.acceleration;
+  gFeed(a && a.x != null ? [a.x, a.y, a.z] : null, ig && ig.x != null ? [ig.x, ig.y, ig.z] : null);
+});
+// Segunda vía para leer el acelerómetro, por si el navegador no manda los eventos de movimiento
+let gSensor = null, gErr = "";
+function startGSensor() {
+  if (gSensor || performance.now() - GM.real < 1500) return;
+  try {
+    if ("LinearAccelerationSensor" in window) { const s = new LinearAccelerationSensor({ frequency: 30 }); s.addEventListener("reading", () => gFeed([s.x, s.y, s.z], null)); gSensor = s; }
+    else if ("Accelerometer" in window) { const s = new Accelerometer({ frequency: 30 }); s.addEventListener("reading", () => gFeed(null, [s.x, s.y, s.z])); gSensor = s; }
+    if (gSensor) { gSensor.addEventListener("error", ev => { gErr = (ev.error && ev.error.name) || "error"; gSensor = null; gHelp(); }); gSensor.start(); }
+  } catch (e) { gErr = e.name || "error"; gSensor = null; }
+}
+function gHelp() {
+  if (performance.now() - GM.real < 2000) return;
+  $("gNote").innerHTML = "No llegan datos del acelerómetro del móvil. En Brave: toca el <b>candado</b> de la barra de direcciones → <b>Permisos</b> → <b>Sensores de movimiento: Permitir</b>. Si sigue igual, toca el <b>león</b> (Shields) y desactiva el bloqueo de <b>huellas digitales</b> para esta página, y recarga." + (demoT ? " Mientras tanto la bolita se mueve con datos de la demo." : "");
+}
+function gFeed(lin, ig) {
+  if (ig) GM.rawG = ig;
   let x, y, z;
-  const a = e.acceleration;
-  if (a && a.x != null) { x = a.x; y = a.y; z = a.z; }
+  if (lin) [x, y, z] = lin;
   else if (GM.rawG) { if (!GM.g0) GM.g0 = GM.rawG.slice(); [x, y, z] = GM.rawG.map((v, i) => v - GM.g0[i]); }
   else return;
   const r = screenRight();
@@ -1570,7 +1629,7 @@ window.addEventListener("devicemotion", e => {
   GM.lat += (lat - GM.lat) * 0.12; GM.lon += (lon - GM.lon) * 0.12;
   GM.real = performance.now();
   gTrack();
-});
+}
 function gDemoSpeed(v, now) {
   if (GM.lastSpd != null && now > GM.lastSpdT) GM.demoLon += (((v - GM.lastSpd) / 3.6) / ((now - GM.lastSpdT) / 1000) / 9.81 - GM.demoLon) * 0.3;
   GM.lastSpd = v; GM.lastSpdT = now;
@@ -1615,7 +1674,8 @@ function drawG(t) {
 }
 $("gCal").onclick = async () => {
   try { if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) await DeviceMotionEvent.requestPermission(); } catch (e) {}
-  if (performance.now() - GM.real > 2000) { $("gNote").textContent = "No llegan datos de los sensores. Ábrela desde GitHub Pages en el móvil (en la vista previa o en el ordenador no hay sensores)."; return; }
+  if (performance.now() - GM.real > 2000) { startGSensor(); await new Promise(r => setTimeout(r, 1200)); }
+  if (performance.now() - GM.real > 2000) { gHelp(); return; }
   if (GM.rawG) GM.g0 = GM.rawG.slice();
   GM.offLat += GM.lat; GM.offLon += GM.lon; GM.lat = GM.lon = 0; GM.trail = [];
   GM.max = { a: 0, b: 0, l: 0, r: 0 }; saveGcal();
