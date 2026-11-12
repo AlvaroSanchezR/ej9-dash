@@ -426,7 +426,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v5.2 · 12/11/2026 22:10"; // se cambia con cada actualización
+const APP_VERSION = "v5.3 · 12/11/2026 22:10"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -769,7 +769,6 @@ setInterval(() => {
   // < 40 °C: máximo 4000 rpm · de 40 a 80 °C sube poco a poco · ≥ 80 °C: sin límite
   const lim = oil == null || oil >= 80 ? null : Math.round((4000 + Math.max(0, oil - 40) / 40 * (cfg.red - 4000)) / 100) * 100;
   coldLim = lim != null && lim < cfg.red ? lim : null;
-  if (coldLim && (V.rpm || 0) > coldLim + 200 && Date.now() - (lastAlert.cold || 0) > 20000) { lastAlert.cold = Date.now(); beep("warn"); }
   if (coldLim !== builtCold) { builtCold = coldLim; if (cfg.view === "full") build(); }   // la zona roja baja o sube con el aceite
 }, 1000);
 try { Object.assign(odo, JSON.parse(localStorage.getItem("ej9odo") || "{}")); } catch (e) {}
