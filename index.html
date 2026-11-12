@@ -82,6 +82,14 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 .tick{stroke:var(--ink)} .tick.rz{stroke:#fff} .tick.mn{opacity:.75}
 .num{font-family:var(--race);font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke-width:7px;stroke-linejoin:round}
 .lbl{font-family:var(--lab);fill:var(--fg);font-weight:500}
+.eng path{fill:none;stroke:#4a4a4a;stroke-width:2;stroke-linejoin:round;transition:all .4s}
+.eng.mil path{fill:#ffb020;stroke:#ffb020;filter:drop-shadow(0 0 6px rgba(255,176,32,.8))}
+.obdp rect{fill:rgba(255,255,255,.04);stroke:#3a3a3a;stroke-width:1.2;transition:all .4s}
+.obdp circle{fill:#555;transition:fill .4s}
+.obdp text{font-family:var(--race);font-weight:600;font-size:8.5px;letter-spacing:.06em;fill:#777}
+.obdp.on rect{stroke:#3ddc84;fill:rgba(61,220,132,.1)} .obdp.on circle{fill:#3ddc84;animation:obdpulse 1.6s ease-in-out infinite} .obdp.on text{fill:#3ddc84}
+.obdp.demo rect{stroke:#ffb020;fill:rgba(255,176,32,.1)} .obdp.demo circle{fill:#ffb020} .obdp.demo text{fill:#ffb020}
+@keyframes obdpulse{50%{opacity:.25}}
 .lim{font-family:var(--race);font-weight:600;fill:var(--fg);letter-spacing:.04em;font-variant-numeric:tabular-nums}
 .lbl.dim{fill:var(--dim)}
 .dig{font-family:var(--race);font-weight:600;fill:var(--fg);text-anchor:middle}
@@ -417,7 +425,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v4.1 · 12/11/2026 20:45"; // se cambia con cada actualización
+const APP_VERSION = "v4.2 · 12/11/2026 20:50"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -708,9 +716,15 @@ function build() {
   R.gearBox = el("path", { d: "M10 211V196H50V211M10 229V244H50V229", class: "box" });
   if (learning) R.gearBox.style.stroke = "var(--amber)";
   R.gear = el("text", { x: 30, y: 221, class: "gtxt" }, "N");
-  R.eng = el("g", { transform: "translate(472 204)" });
-  el("path", { d: "M6 10h6V6h12v4h6l4 4h4v-4h4v18h-4v-4h-4v6H14l-4-4H6v-6H2v-6h4z", fill: "#3a3a3a" }, R.eng);
-  R.obdTxt = el("text", { x: 496, y: 252, class: "lbl dim", "text-anchor": "middle", "font-size": 10 }, "OFF");
+  // Testigo de motor: apagado (contorno gris) si todo va bien, ámbar encendido si hay avería
+  R.eng = el("g", { transform: "translate(478 203) scale(.95)", class: "eng" });
+  el("path", { d: "M6 10h6V6h12v4h6l4 4h4v-4h4v18h-4v-4h-4v6H14l-4-4H6v-6H2v-6h4z" }, R.eng);
+  // Pastilla de estado de la conexión: punto + texto
+  R.obd = el("g", { class: "obdp" });
+  el("rect", { x: 481, y: 242, width: 37, height: 14, rx: 7 }, R.obd);
+  R.obdDot = el("circle", { cx: 487.5, cy: 249, r: 2.3 }, R.obd);
+  R.obdTxt = el("text", { x: 504.5, y: 252.2, "text-anchor": "middle" }, "OFF", R.obd);
+  status($("stat").textContent, mode);
   render();
 }
 
@@ -1014,8 +1028,9 @@ let mode = "";
 function status(txt, m) {
   mode = m || ""; $("stat").textContent = txt;
   if (R.eng) {
-    R.eng.firstChild.setAttribute("fill", mode === "on" ? "#3ddc84" : mode === "demo" ? "#ffb020" : "#3a3a3a");
+    R.obd.setAttribute("class", "obdp " + (mode === "on" ? "on" : mode === "demo" ? "demo" : ""));
     R.obdTxt.textContent = mode === "on" ? "OBD" : mode === "demo" ? "DEMO" : "OFF";
+    if (mode !== "on") R.eng.classList.remove("mil");
   }
 }
 
@@ -1215,7 +1230,7 @@ async function checkMil() {
   const a = parseInt(s.substr(i + 4, 2), 16);
   if (isNaN(a)) return;
   const cnt = a & 0x7f, mil = !!(a & 0x80);
-  if (R.eng) R.eng.firstChild.setAttribute("fill", mil || cnt ? "#ffb020" : "#3ddc84");
+  if (R.eng) R.eng.classList.toggle("mil", !!(mil || cnt));
   if (cnt > (dtcCount || 0)) alertNow("dtc", `${cnt === 1 ? "Hay 1 avería guardada" : `Hay ${cnt} averías guardadas`}. Míralas en el menú, Averías.`, "crit");
   dtcCount = cnt;
 }
@@ -1290,7 +1305,7 @@ async function readDtc() {
     i = r.indexOf("43", i + 14);
   }
   list.innerHTML = codes.length ? [...new Set(codes)].map(c => `<li>${c}<small>${dtcText(c)}</small></li>`).join("") : "<li>Sin códigos guardados.</li>";
-  if (R.eng && codes.length) R.eng.firstChild.setAttribute("fill", "#ffb020");
+  if (R.eng && codes.length) R.eng.classList.add("mil");
   loop();
 }
 async function clearDtc() {
