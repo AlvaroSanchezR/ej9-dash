@@ -127,7 +127,6 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 
 .dots{position:fixed;z-index:15;left:50%;transform:translateX(-50%);bottom:calc(4px + env(safe-area-inset-bottom,0px));display:flex;gap:4px;opacity:0;transition:opacity .4s}
 .dots.show{opacity:1}
-#colL .cell:first-child,.shop .cell:first-child{padding-left:56px}
 .dots button{width:22px;height:18px;border:0;background:none;padding:0;display:grid;place-items:center;cursor:pointer}
 .dots button::after{content:"";width:8px;height:8px;border-radius:50%;background:#444}
 .dots button.on::after{background:var(--red)}
@@ -349,6 +348,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 <div class="overlay" id="dtcOv" hidden>
   <div class="sheet">
     <h2>CÓDIGOS DE AVERÍA</h2>
+    <p class="note">Corrección larga (LTFT): <b id="ltftInfo">-</b> · normal entre −10 y +10 %</p>
     <ul class="dtc" id="dtcList"><li style="font-weight:500;font-size:14px">Pulsa Leer con el adaptador conectado.</li></ul>
     <div class="confirm" id="clearBox" hidden>
       <button class="b pri" id="clearYes">Sí, borrar códigos</button>
@@ -416,11 +416,11 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v3.8 · 12/11/2026 20:40"; // se cambia con cada actualización
+const APP_VERSION = "v3.9 · 12/11/2026 20:35"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
-const DEF_CELLS = ["volt", "adv", "fuel", "stft", "o2", "ltft"];
+const DEF_CELLS = ["volt", "adv", "iat", "o2", "stft", "load"];
 // Pantalla taller: se muestran los 12 primeros que el coche sí da (los que no da se saltan)
 const SHOP_ALL = ["rpm", "spd", "water", "oil", "tps", "mapm", "adv", "fuel", "stft", "ltft", "o2", "volt", "iat", "lam", "maf", "flvl", "glon", "load"];
 let SHOP = SHOP_ALL.slice(0, 12);
@@ -455,6 +455,7 @@ const SENSORS = {
 };
 const fixList = (arr, def) => def.map((k, i) => SENSORS[arr && arr[i]] ? arr[i] : k);
 cfg.arcs = fixList(cfg.arcs, DEF_ARCS); cfg.cells = fixList(cfg.cells, DEF_CELLS);
+if (cfg.cells.join() === "volt,adv,fuel,stft,o2,ltft") cfg.cells = DEF_CELLS.slice();   // tablas de serie antiguas → nuevas
 if (!cfg.oilArc) { if (cfg.arcs[1] === "iat") cfg.arcs[1] = "oil"; cfg.oilArc = true; } // la temperatura de aceite pasa al arco de arriba a la derecha
 const saveCfg = () => { try { localStorage.setItem("ej9cfg2", JSON.stringify(cfg)); } catch (e) {} };
 
@@ -841,6 +842,7 @@ requestAnimationFrame(anim);
 
 function setVal(k, v) {
   V[k] = v;
+  if (k === "ltft" || k === "stft") { const e = $("ltftInfo"); if (e) e.textContent = V.ltft == null ? "-" : `${V.ltft.toFixed(1)} %  (corta ${V.stft == null ? "-" : V.stft.toFixed(1)} %)`; }
   if (k === "map") setVal("mapm", v == null ? null : v * 10);
   if (SENSORS[k] && v != null) { (H[k] = H[k] || []).push(v); if (H[k].length > HLEN) H[k].shift(); }
   const now = performance.now();
