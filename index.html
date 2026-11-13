@@ -176,15 +176,22 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 @media (prefers-reduced-motion:reduce){.shiftFlash.on{animation:none;background:rgba(227,23,10,.4)}}
 
 /* Pantalla de fuerzas G */
-.gview{height:100%;display:grid;grid-template-columns:auto minmax(0,1fr);gap:24px;align-items:center;padding-block:10px 24px;box-sizing:border-box}
-.gview canvas{height:calc(100vh - 60px);max-height:100%;aspect-ratio:1;max-width:60vw;display:block;margin-left:56px}
+.gview{height:100%;display:grid;grid-template-columns:minmax(110px,170px) auto minmax(0,1fr);gap:20px;padding-left:20px;align-items:center;padding-block:10px 24px;box-sizing:border-box}
+.gview canvas{height:calc(100vh - 60px);max-height:100%;aspect-ratio:1;max-width:46vw;display:block}
+.gcar{display:flex;flex-direction:column;gap:6px;min-width:0}
+.gk{border-bottom:1px solid var(--line);padding-bottom:4px}
+.gk b{display:block;font-family:var(--race);font-weight:600;font-size:clamp(22px,4vw,34px);line-height:1.05;font-variant-numeric:tabular-nums}
+.gk.big b{font-size:clamp(44px,9vw,76px)}
+.gk span{font-size:11px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+.gsrc{font-size:11px;color:var(--dim);margin-top:2px}.gsrc.ok{color:#3ddc84}
 .gside{display:flex;flex-direction:column;gap:10px;min-width:0;max-width:340px}
 .gnums{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .gnums div{background:#0d0d0d;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
 .gnums b{display:block;font-size:clamp(20px,4vw,32px);font-variant-numeric:tabular-nums}
 .gnums span{font-size:11px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
 @media (orientation:portrait){
-  .gview{height:auto;grid-template-columns:1fr;padding-block:64px 30px}
+  .gview{height:auto;grid-template-columns:1fr;padding-block:64px 30px;padding-left:0}
+  .gcar{flex-direction:row;flex-wrap:wrap;gap:6px 16px}
   .gview canvas{width:100%;height:auto;max-width:100%;margin-left:0}
   .gside{max-width:none}
 }
@@ -219,6 +226,14 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 <div class="shop" id="shop" hidden></div>
 
 <div class="gview" id="gview" hidden>
+  <div class="gcar">
+    <div class="gk big"><b id="gcSpd">-</b><span>km/h</span></div>
+    <div class="gk"><b id="gcRpm">-</b><span>rpm</span></div>
+    <div class="gk"><b id="gcGear">-</b><span>marcha</span></div>
+    <div class="gk"><b id="gcWat">-</b><span>agua °C</span></div>
+    <div class="gk"><b id="gcOil">-</b><span id="gcOilL">aceite °C</span></div>
+    <div class="gsrc" id="gSrc">Sensor: —</div>
+  </div>
   <canvas id="gCv"></canvas>
   <div class="gside">
     <div class="gnums">
@@ -431,7 +446,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v5.8 · 13/11/2026 23:50"; // se cambia con cada actualización
+const APP_VERSION = "v5.9 · 13/11/2026 23:55"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -1901,6 +1916,17 @@ function drawG(t) {
     $("gLon").textContent = GM.lon.toFixed(2); $("gLat").textContent = GM.lat.toFixed(2);
     $("gMA").textContent = GM.max.a.toFixed(2); $("gMB").textContent = GM.max.b.toFixed(2);
     $("gML").textContent = GM.max.l.toFixed(2); $("gMR").textContent = GM.max.r.toFixed(2);
+    // Pantalla dividida: datos del coche al lado de las G
+    const f = (v, d = 0) => v == null ? "-" : v.toFixed(d);
+    $("gcSpd").textContent = V.spd == null ? "-" : Math.round(V.spd * cfg.spdCorr);
+    $("gcRpm").textContent = V.rpm == null ? "-" : Math.round(V.rpm / 10) * 10;
+    $("gcGear").textContent = gearOf(V.rpm, V.spd);
+    $("gcWat").textContent = f(V.water);
+    const oil = V.oil != null ? V.oil : oilEst;
+    $("gcOil").textContent = f(oil); $("gcOilL").textContent = V.oil != null ? "aceite °C" : "aceite °C (est.)";
+    const real = performance.now() - GM.real < 2000;
+    $("gSrc").textContent = real ? "G: sensor del móvil" : demoT ? "G: simuladas (sin sensor)" : "G: sin sensor";
+    $("gSrc").classList.toggle("ok", real);
   }
 }
 $("gCal").onclick = async () => {
