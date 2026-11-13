@@ -514,7 +514,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v7.3 · 14/11/2026 00:55"; // se cambia con cada actualización
+const APP_VERSION = "v7.4 · 14/11/2026 01:00"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -2275,27 +2275,37 @@ const HW_RANK = { motorway: 6, trunk: 6, primary: 5, secondary: 4, tertiary: 3, 
 const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 async function rlFetch(lat, lon) {
   if (RL.fetching || performance.now() - RL.lastFetch < 15000) return;
-  RL.fetching = true; RL.lastFetch = performance.now(); rlMsg("Cargando carreteras…");
-  const q = `[out:json][timeout:15];way(around:2000,${lat.toFixed(5)},${lon.toFixed(5)})["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"];out geom;`;
-  for (const url of OVERPASS) {
+  RL.fetching = true; RL.lastFetch = performance.now();
+  // recuadro de ~3 x 3 km alrededor (más rápido para el servidor que un radio)
+  const dLat = 0.0135, dLon = 0.0135 / Math.cos(lat * RD);
+  const bb = [lat - dLat, lon - dLon, lat + dLat, lon + dLon].map(v => v.toFixed(5)).join(",");
+  const q = `[out:json][timeout:20];way(${bb})["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"];out geom;`;
+  const errs = [];
+  for (const [n, url] of OVERPASS.entries()) {
+    rlMsg(`Cargando carreteras… (servidor ${n + 1}/${OVERPASS.length})`);
+    const ac = new AbortController(), to = setTimeout(() => ac.abort(), 15000);   // si un servidor tarda, se prueba el siguiente
     try {
-      const ac = new AbortController(), to = setTimeout(() => ac.abort(), 12000);   // si un servidor tarda, se prueba el siguiente
-      const r = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" }, signal: ac.signal });
-      clearTimeout(to);
-      if (!r.ok) continue;
+      const r = await fetch(url + "?data=" + encodeURIComponent(q), { signal: ac.signal });
+      if (!r.ok) { errs.push(`${n + 1}: ${r.status}`); continue; }
       const j = await r.json();
+      clearTimeout(to);
       RL.ways = j.elements.filter(e => e.type === "way" && e.geometry && e.nodes).map(e => ({
         id: e.id, nodes: e.nodes, g: e.geometry.map(p => [p.lat, p.lon]), rank: HW_RANK[e.tags.highway] ?? 1,
         name: e.tags.ref || e.tags.name || "", oneway: e.tags.oneway === "yes" || /motorway/.test(e.tags.highway) || e.tags.junction === "roundabout",
       }));
       RL.nodeWays = new Map();
-      RL.ways.forEach((w, wi) => w.nodes.forEach((n, ni) => { if (!RL.nodeWays.has(n)) RL.nodeWays.set(n, []); RL.nodeWays.get(n).push([wi, ni]); }));
-      RL.area = { lat, lon, r: 2000 };
-      RL.fetching = false; rlMsg(RL.ways.length ? "" : "No hay carreteras cerca.");
+      RL.ways.forEach((w, wi) => w.nodes.forEach((nd, ni) => { if (!RL.nodeWays.has(nd)) RL.nodeWays.set(nd, []); RL.nodeWays.get(nd).push([wi, ni]); }));
+      RL.area = { lat, lon, r: 1500 };
+      RL.fetching = false; log(`Rutas: ${RL.ways.length} vías cargadas (servidor ${n + 1})`);
+      rlMsg(RL.ways.length ? "" : "No hay carreteras cerca.");
+      if (RL.pos) rlTick();
       return;
-    } catch (e) {}
+    } catch (e) { errs.push(`${n + 1}: ${e.name === "AbortError" ? "tarda demasiado" : e.message}`); }
+    finally { clearTimeout(to); }
   }
-  RL.fetching = false; RL.lastFetch = performance.now() - 10000; rlMsg("No responde el servidor del mapa. Reintentando…");
+  RL.fetching = false; RL.lastFetch = performance.now() - 5000;
+  log("Rutas: sin respuesta · " + errs.join(" · "));
+  rlMsg("No responde el mapa (" + errs.join(" · ") + "). Reintento en 10 s…");
 }
 
 /* ---------- En qué carretera vas y qué viene ---------- */
@@ -2403,10 +2413,10 @@ function noteTxt(c) { return c.grade === "H" ? `horquilla ${c.dir}` : `${c.dir} 
 function rlTick() {
   if (!RL.on || !RL.pos) return;
   const pos = RL.pos;
-  if (!RL.area || dist(toXY(pos[0], pos[1], [RL.area.lat, RL.area.lon]), [0, 0]) > RL.area.r - 900) rlFetch(pos[0], pos[1]);
+  if (!RL.area || dist(toXY(pos[0], pos[1], [RL.area.lat, RL.area.lon]), [0, 0]) > RL.area.r - 600) rlFetch(pos[0], pos[1]);
   if (!RL.ways.length) return;
   const s = rlSnap(pos, RL.hdg);
-  if (!s) { rlMsg(RL.fetching ? "Cargando carreteras…" : "Buscando la carretera…"); rlBox(null); return; }
+  if (!s) { if (!RL.fetching) rlMsg("Buscando la carretera…"); rlBox(null); return; }
   const w = RL.ways[s.wi]; $("rlRoad").textContent = w.name;
   const ahead = rlAhead(s, pos); RL.path = ahead;
   const { corners } = rlCorners(ahead); RL.corners = corners;
