@@ -431,7 +431,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v5.7 · 13/11/2026 08:20"; // se cambia con cada actualización
+const APP_VERSION = "v5.8 · 13/11/2026 23:50"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -1846,7 +1846,7 @@ function startGSensor() {
 }
 function gHelp() {
   if (performance.now() - GM.real < 2000) return;
-  $("gNote").innerHTML = "No llegan datos del acelerómetro del móvil. En Brave: toca el <b>candado</b> de la barra de direcciones → <b>Permisos</b> → <b>Sensores de movimiento: Permitir</b>. Si sigue igual, toca el <b>león</b> (Shields) y desactiva el bloqueo de <b>huellas digitales</b> para esta página, y recarga." + (demoT ? " Mientras tanto la bolita se mueve con datos de la demo." : "");
+  $("gNote").innerHTML = "No llegan datos del acelerómetro del móvil. En Brave: <b>menú ⋮ → Configuración → Configuración de sitios → Sensores de movimiento</b> y actívalo (o quita esta web de «Bloqueados»). Si sigue igual, abre la app en una pestaña de Brave, toca el <b>león</b> (Shields) y pon el bloqueo de <b>huellas digitales</b> en «Permitir» o desactiva Shields para esta página, y recarga." + (demoT ? " Mientras tanto la bolita se mueve con datos de la demo." : "");
 }
 function gFeed(lin, ig) {
   if (ig) GM.rawG = ig;
