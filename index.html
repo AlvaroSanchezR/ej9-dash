@@ -454,7 +454,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v6.2 · 14/11/2026 00:05"; // se cambia con cada actualización
+const APP_VERSION = "v6.3 · 14/11/2026 00:10"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -794,7 +794,7 @@ const saveTank = () => { if (slept) return; try { localStorage.setItem("ej9tank"
 setInterval(() => { if (connected) { saveTank(); saveOdo(); } }, 10000);
 
 /* Cuentakilómetros: km reales metidos a mano + lo recorrido con el adaptador conectado */
-let odo = { km: null, sent: null }, odoCar = false;
+let odo = { km: null, sent: null }, odoCar = false, isCan = false;
 /* ---------- Aceite frío: límite de vueltas hasta que el aceite coge temperatura ----------
    Si el coche no da la temperatura del aceite (el Civic no la da), se estima: el aceite sigue al agua
    pero mucho más despacio (unos 6 min de retraso), y con más vueltas se calienta antes. */
@@ -1234,7 +1234,7 @@ async function initElm() {
     const dp = (await send("ATDPN")).replace(/[^0-9A-C]/gi, "").slice(-1).toUpperCase();
     log("Protocolo: " + dp);
     // El Civic EJ9 habla un protocolo antiguo (1–5: J1850 / ISO 9141 / KWP). Los coches con CAN (6–C) no suman km al widget
-    odoCar = /^[1-5]$/.test(dp);
+    odoCar = /^[1-5]$/.test(dp); isCan = /^[6-9A-C]$/.test(dp);
     log(odoCar ? "Coche con protocolo antiguo: los km suman al cuentakilómetros" : "Otro coche (CAN): los km no suman al cuentakilómetros del widget");
     stopDemo();
     if (cfg.lastConn !== via) { cfg.lastConn = via; saveCfg(); }
@@ -1387,18 +1387,36 @@ function dtcText(c) {
   if (c[0] === "P") return "Código propio del fabricante (motor o cambio)";
   return { B: "Carrocería", C: "Chasis (frenos, suspensión)", U: "Comunicación entre centralitas" }[c[0]] || "Sin descripción";
 }
+/* Respuesta del modo 03, línea a línea (una por centralita o trama).
+   CAN (coches modernos): 43 + nº de códigos + códigos (puede venir en varias tramas "0:", "1:"…).
+   Protocolos antiguos (Civic): 43 + 3 códigos por línea, 0000 = vacío. */
+function parseDtcs(raw) {
+  const lines = raw.toUpperCase().split(/[\r\n>]+/).map(l => l.replace(/\s/g, "")).filter(l => /^[0-9A-F:]+$/.test(l));
+  const msgs = [];
+  for (const l of lines) {
+    const m = l.match(/^([0-9A-F]):(.*)$/);
+    if (m) { if (m[1] === "0" || !msgs.length) msgs.push(m[2]); else msgs[msgs.length - 1] += m[2]; }
+    else if (l.length > 3) msgs.push(l);   // las líneas de 3 cifras son la longitud de una respuesta larga
+  }
+  const codes = [];
+  for (const m of msgs) {
+    if (!m.startsWith("43")) continue;
+    if (isCan) {
+      const n = parseInt(m.substr(2, 2), 16) || 0;
+      for (let j = 0; j < n; j++) { const c = decodeDtc(m.substr(4 + j * 4, 4)); if (c) codes.push(c); }
+    } else {
+      for (let j = 2; j + 4 <= Math.min(m.length, 14); j += 4) { const c = decodeDtc(m.substr(j, 4)); if (c) codes.push(c); }
+    }
+  }
+  return codes;
+}
 async function readDtc() {
   const list = $("dtcList");
   if (!connected) { list.innerHTML = "<li>Conecta primero el adaptador.</li>"; return; }
   running = false; await new Promise(r => setTimeout(r, 400));
   list.innerHTML = "<li>Leyendo…</li>";
-  const r = (await send("03", 8000)).replace(/\s/g, "").toUpperCase(); log("03 → " + r);
-  const codes = []; let i = r.indexOf("43");
-  while (i >= 0) {
-    const body = r.slice(i + 2, i + 14);
-    for (let j = 0; j + 4 <= body.length; j += 4) { const c = decodeDtc(body.substr(j, 4)); if (c) codes.push(c); }
-    i = r.indexOf("43", i + 14);
-  }
+  const raw = await send("03", 8000); log("03 → " + raw.replace(/\s+/g, " "));
+  const codes = parseDtcs(raw);
   list.innerHTML = codes.length ? [...new Set(codes)].map(c => `<li>${c}<small>${dtcText(c)}</small></li>`).join("") : "<li>Sin códigos guardados.</li>";
   if (R.eng && codes.length) R.eng.classList.add("mil");
   loop();
