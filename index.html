@@ -76,6 +76,26 @@ body{background:var(--bg);color:var(--fg);font-family:var(--ui);margin:0;
 .guide summary i{font-style:normal;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
 .guide p{margin:6px 0 0;font-size:13.5px;line-height:1.45;color:#bbb}
 .guide b.ok{color:#3ddc84}.guide b.w{color:var(--amber)}.guide b.c{color:var(--red)}
+/* ---------- Rutas (notas de rally) ---------- */
+.rally{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:8px;padding-block:8px 52px;box-sizing:border-box}
+.rlnote{--nc:#555;display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:12px;background:#0d0d0d;border:2px solid var(--nc);border-radius:14px;padding:8px 14px;color:var(--nc);transition:border-color .3s,color .3s}
+.rlarrow{width:clamp(56px,14vw,96px);aspect-ratio:1}.rlarrow svg{width:100%;height:100%}
+.rlg{font-family:var(--race);font-weight:700;font-size:clamp(56px,15vw,110px);line-height:.9;min-width:.7em;text-align:center}
+.rlinfo{min-width:0}#rlMod{font-family:var(--race);font-weight:700;font-size:clamp(18px,4.5vw,30px);letter-spacing:.04em;color:#eee}
+.rld{font-family:var(--race);font-weight:600;font-size:clamp(16px,4vw,26px);color:var(--nc)}.rln{font-size:13px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rlmapw{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);min-height:0}
+#rlMap{position:absolute;inset:0;background:#111}
+.rlmsg{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:500;background:rgba(0,0,0,.8);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:14px;white-space:nowrap}
+.rlhud{position:absolute;left:10px;bottom:10px;z-index:500;background:rgba(0,0,0,.75);border-radius:10px;padding:4px 10px;display:flex;align-items:baseline;gap:6px}
+.rlhud b{font-family:var(--race);font-size:30px}.rlhud span{font-size:12px;color:var(--dim)}.rlhud em{font-style:normal;font-size:12px;color:#aaa;margin-left:6px}
+.rlz{position:absolute;right:10px;bottom:10px;z-index:500;display:flex;flex-direction:column;gap:6px}.rlz .b{width:40px;height:40px;padding:0;font-size:22px}
+.rlbar{display:flex;gap:8px;justify-content:center}.rlbar .b{flex:0 1 auto}
+.rlme i{display:block;width:26px;height:26px;background:conic-gradient(from -25deg,#fff 0 50deg,transparent 50deg);border-radius:50%;box-shadow:0 0 0 3px #e3170a inset}
+#rlMe{width:0!important;height:0!important;border-left:11px solid transparent;border-right:11px solid transparent;border-bottom:26px solid #fff;background:none!important;box-shadow:none!important;border-radius:0!important;filter:drop-shadow(0 0 4px #000)}
+@media (orientation:landscape){.rally{grid-template-rows:minmax(0,1fr) auto;grid-template-columns:minmax(260px,38%) minmax(0,1fr);padding-block:8px 46px}
+  .rlnote{grid-row:1;grid-column:1;grid-template-columns:auto auto;grid-template-rows:auto auto;justify-content:center;align-content:center;overflow:hidden;min-height:0;gap:4px 10px}
+  .rlarrow{width:min(14vw,24vh)}.rlg{font-size:min(15vw,30vh)}.rlinfo{grid-column:1/-1;text-align:center}
+  #rlMod{font-size:min(4.5vw,7.5vh)}.rld{font-size:min(4vw,7vh)}.rlmapw{grid-row:1/3;grid-column:2}.rlbar{grid-row:2;grid-column:1}.rln{white-space:normal}}
 .sheet{width:min(440px,100%);max-height:100%;overflow:auto;background:#121212;border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
 .sheet h2{margin:0;font-size:17px;letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center}
 .sheet h2 span{font-size:13px;color:var(--dim);letter-spacing:0;font-weight:500}
@@ -238,6 +258,25 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
 
 <div class="shop" id="shop" hidden></div>
 
+<div class="rally" id="rally" hidden>
+  <div class="rlnote" id="rlNote">
+    <div class="rlarrow" id="rlArrow"></div>
+    <div class="rlg" id="rlGrade">—</div>
+    <div class="rlinfo"><div id="rlMod"></div><div class="rld" id="rlDist"></div><div class="rln" id="rlNext"></div></div>
+  </div>
+  <div class="rlmapw">
+    <div id="rlMap"></div>
+    <div class="rlmsg" id="rlMsg" hidden></div>
+    <div class="rlhud"><b id="rlSpd">0</b><span>km/h</span><em id="rlRoad"></em></div>
+    <div class="rlz"><button class="b" id="rlZin">+</button><button class="b" id="rlZout">−</button></div>
+  </div>
+  <div class="rlbar">
+    <button class="b pri" id="rlGo">Iniciar</button>
+    <button class="b" id="rlSim">Probar aquí</button>
+    <select id="rlSimV" class="b" aria-label="Velocidad de la prueba"><option value="50">50 km/h</option><option value="70" selected>70 km/h</option><option value="90">90 km/h</option><option value="120">120 km/h</option></select>
+  </div>
+</div>
+
 <div class="gview" id="gview" hidden>
   <div class="gcar">
     <div class="gk big"><b id="gcSpd">-</b><span>km/h</span></div>
@@ -272,6 +311,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
   <button data-v="full" aria-label="Pantalla completa"></button>
   <button data-v="shop" aria-label="Pantalla taller"></button>
   <button data-v="g" aria-label="Pantalla fuerzas G"></button>
+  <button data-v="rally" aria-label="Pantalla rutas con notas"></button>
 </nav>
 
 <button class="menu" id="menuBtn" aria-label="Menú"><i></i></button>
@@ -470,7 +510,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v6.5 · 14/11/2026 00:35"; // se cambia con cada actualización
+const APP_VERSION = "v7.0 · 14/11/2026 01:10"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -1642,13 +1682,14 @@ $("closePick").onclick = closeOv;
 function rebuild() { buildCells(); build(); status($("stat").textContent, mode); }
 
 /* ---------- Pantallas: calle · completa · taller ---------- */
-const VIEWS = ["street", "full", "shop", "g"];
+const VIEWS = ["street", "full", "shop", "g", "rally"];
 const SEGS = [];
 for (let i = 0; i < 40; i++) SEGS.push($("sbar").appendChild(document.createElement("i")));
 function setView(v) {
   if (!VIEWS.includes(v)) v = "full";
   cfg.view = v; saveCfg();
-  $("app").hidden = v !== "full"; $("street").hidden = v !== "street"; $("shop").hidden = v !== "shop"; $("gview").hidden = v !== "g";
+  $("app").hidden = v !== "full"; $("street").hidden = v !== "street"; $("shop").hidden = v !== "shop"; $("gview").hidden = v !== "g"; $("rally").hidden = v !== "rally";
+  if (v === "rally") setTimeout(() => rlInitMap().then(() => RL.map && RL.map.invalidateSize()), 0);   // tras cargar todo el código
   [...$("dots").children].forEach(b => b.classList.toggle("on", b.dataset.v === v));
   showDots();
   render();
@@ -2189,10 +2230,306 @@ setInterval(() => { if (performance.now() - GM.real < 1000) setVal("glon", GM.lo
 setInterval(checkUpdate, 5 * 60000);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkUpdate(); });
 
+/* =====================================================================
+   RUTAS · copiloto con notas de rally
+   - Pide a OpenStreetMap (Overpass) solo las carreteras de ~2,5 km alrededor.
+   - Sigue la carretera por la que vas, mira lo que viene y le pone nota a cada curva (6 suave … 1 muy cerrada).
+   - Canta las notas con la voz del móvil con antelación según la velocidad.
+   ===================================================================== */
+const RL = {
+  on: false, sim: false, map: null, me: null, lines: null, gw: null,
+  ways: [], nodeWays: new Map(), area: null, fetching: false, lastFetch: -1e9,
+  pos: null, prev: null, hdg: null, spd: 0,
+  path: [], corners: [], said: new Set(), simT: 0, simS: 0, simPath: null, voice: null,
+};
+const RD = Math.PI / 180;
+const mPerLat = 111320;
+const toXY = (lat, lon, o) => [(lon - o[1]) * mPerLat * Math.cos(o[0] * RD), (lat - o[0]) * mPerLat];
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const angN = a => { while (a > 180) a -= 360; while (a < -180) a += 360; return a; };
+const brg = (a, b) => Math.atan2(b[0] - a[0], b[1] - a[1]) / RD;   // 0 = norte, 90 = este (en metros locales)
+
+const HW_RANK = { motorway: 6, trunk: 6, primary: 5, secondary: 4, tertiary: 3, unclassified: 2, residential: 1, motorway_link: 3, trunk_link: 3, primary_link: 3, secondary_link: 2, tertiary_link: 2, living_street: 0, service: 0 };
+
+/* ---------- Datos de la carretera (Overpass) ---------- */
+const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+async function rlFetch(lat, lon) {
+  if (RL.fetching || performance.now() - RL.lastFetch < 15000) return;
+  RL.fetching = true; RL.lastFetch = performance.now(); rlMsg("Cargando carreteras…");
+  const q = `[out:json][timeout:20];way(around:2500,${lat.toFixed(5)},${lon.toFixed(5)})["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"];out geom;`;
+  for (const url of OVERPASS) {
+    try {
+      const r = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" } });
+      if (!r.ok) continue;
+      const j = await r.json();
+      RL.ways = j.elements.filter(e => e.type === "way" && e.geometry && e.nodes).map(e => ({
+        id: e.id, nodes: e.nodes, g: e.geometry.map(p => [p.lat, p.lon]), rank: HW_RANK[e.tags.highway] ?? 1,
+        name: e.tags.ref || e.tags.name || "", oneway: e.tags.oneway === "yes" || /motorway/.test(e.tags.highway) || e.tags.junction === "roundabout",
+      }));
+      RL.nodeWays = new Map();
+      RL.ways.forEach((w, wi) => w.nodes.forEach((n, ni) => { if (!RL.nodeWays.has(n)) RL.nodeWays.set(n, []); RL.nodeWays.get(n).push([wi, ni]); }));
+      RL.area = { lat, lon, r: 2500 };
+      RL.fetching = false; rlMsg(RL.ways.length ? "" : "No hay carreteras cerca.");
+      return;
+    } catch (e) {}
+  }
+  RL.fetching = false; rlMsg("Sin conexión con el mapa. Reintentando…");
+}
+
+/* ---------- En qué carretera vas y qué viene ---------- */
+function rlSnap(pos, hdg) {
+  const o = pos; let best = null;
+  RL.ways.forEach((w, wi) => {
+    for (let i = 0; i < w.g.length - 1; i++) {
+      const a = toXY(w.g[i][0], w.g[i][1], o), b = toXY(w.g[i + 1][0], w.g[i + 1][1], o);
+      const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, -(a[0] * dx + a[1] * dy) / L2));
+      const d = Math.hypot(a[0] + t * dx, a[1] + t * dy);
+      if (d > 35) continue;
+      const sb = brg(a, b);
+      let dir = 1, dh = 0;
+      if (hdg != null) { dh = Math.abs(angN(sb - hdg)); if (dh > 90) { dir = -1; dh = 180 - dh; } }
+      if (dir === -1 && w.oneway) continue;
+      const score = d + dh * 0.6 - w.rank * 2;
+      if (!best || score < best.score) best = { score, wi, i, t, dir };
+    }
+  });
+  return best;
+}
+// Recorre la carretera hacia delante ~1,2 km; en los cruces sigue por la más recta (y de más categoría)
+function rlAhead(s, pos) {
+  const pts = [pos]; let wi = s.wi, w = RL.ways[wi], dir = s.dir, len = 0;
+  let idx = dir === 1 ? s.i + 1 : s.i;   // siguiente nodo en el sentido de la marcha
+  const used = new Set([w.id]);
+  for (let guard = 0; guard < 400 && len < 1200; guard++) {
+    const p = w.g[idx]; len += dist(toXY(p[0], p[1], pos), toXY(pts[pts.length - 1][0], pts[pts.length - 1][1], pos)); pts.push(p);
+    const nid = w.nodes[idx], next = idx + dir;
+    const endOfWay = next < 0 || next >= w.g.length;
+    const links = (RL.nodeWays.get(nid) || []).filter(([wj]) => wj !== wi);
+    if (!endOfWay && !links.length) { idx = next; continue; }
+    // cruce o fin de vía: elegir la continuación más recta
+    const prevP = pts[pts.length - 2] || pos, inB = brg(toXY(prevP[0], prevP[1], pos), toXY(p[0], p[1], pos));
+    const opts = [];
+    if (!endOfWay) opts.push({ wi, idx: next, dir, rank: w.rank, same: true });
+    links.forEach(([wj, nj]) => {
+      const W = RL.ways[wj]; if (used.has(W.id) && W.id !== w.id) return;
+      if (nj + 1 < W.g.length) opts.push({ wi: wj, idx: nj + 1, dir: 1, rank: W.rank });
+      if (nj - 1 >= 0 && !W.oneway) opts.push({ wi: wj, idx: nj - 1, dir: -1, rank: W.rank });
+    });
+    let best = null;
+    opts.forEach(op => {
+      const q = RL.ways[op.wi].g[op.idx], ob = brg(toXY(p[0], p[1], pos), toXY(q[0], q[1], pos));
+      const turn = Math.abs(angN(ob - inB)), sc = turn - op.rank * 6 - (op.same ? 15 : 0);
+      if (turn < 120 && (!best || sc < best.sc)) best = { ...op, sc };
+    });
+    if (!best) break;
+    if (best.wi !== wi) { wi = best.wi; w = RL.ways[wi]; used.add(w.id); }
+    idx = best.idx; dir = best.dir;
+  }
+  return pts;
+}
+
+/* ---------- De la forma de la carretera a notas de rally ---------- */
+// Remuestrea cada 8 m, mide el giro y agrupa las curvas
+function rlCorners(ll) {
+  if (ll.length < 3) return { xy: [], corners: [] };
+  const o = ll[0], raw = ll.map(p => toXY(p[0], p[1], o)), xy = [raw[0]], STEP = 8;
+  let acc = 0;
+  for (let i = 1; i < raw.length; i++) {
+    let a = raw[i - 1]; const b = raw[i]; let seg = dist(a, b);
+    while (acc + seg >= STEP) { const t = (STEP - acc) / seg; a = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; xy.push(a); seg = dist(a, b); acc = 0; }
+    acc += seg;
+  }
+  const n = xy.length, K = 3, turn = new Array(n).fill(0);   // giro (grados por tramo de 8 m) medido entre las cuerdas de 24 m de antes y después
+  for (let i = K; i < n - K; i++) turn[i] = angN(brg(xy[i], xy[i + K]) - brg(xy[i - K], xy[i])) / K;
+  const corners = []; let i = 0;
+  while (i < n) {
+    if (Math.abs(turn[i]) < 0.9) { i++; continue; }   // < ~0,9°/8 m = radio > ~500 m: recta
+    const sg = Math.sign(turn[i]); let j = i, tot = 0, mx = 0, peakAt = i;
+    while (j < n && Math.sign(turn[j]) === sg && Math.abs(turn[j]) >= 0.5) { tot += turn[j]; if (Math.abs(turn[j]) > mx) { mx = Math.abs(turn[j]); peakAt = j; } j++; }
+    const ang = Math.abs(tot), lenM = (j - i) * STEP;
+    if (ang >= 14) {
+      const rMin = STEP / (mx * RD);   // radio en el punto más cerrado
+      const half = Math.floor((i + j) / 2);
+      const r1 = turn.slice(i, half).reduce((s, v) => s + Math.abs(v), 0) / Math.max(1, half - i);
+      const r2 = turn.slice(half, j).reduce((s, v) => s + Math.abs(v), 0) / Math.max(1, j - half);
+      corners.push({ s: i * STEP, e: j * STEP, dir: sg > 0 ? "derecha" : "izquierda", ang, rMin, len: lenM, grade: rlGrade(rMin, ang),
+        mod: lenM > 110 || ang > 120 ? "larga" : r2 > r1 * 1.4 ? "cierra" : r1 > r2 * 1.4 ? "abre" : "", peak: peakAt * STEP });
+    }
+    i = j;
+  }
+  return { xy, corners };
+}
+function rlGrade(r, ang) {
+  if (ang > 150 && r < 22) return "H";   // horquilla
+  return r < 25 ? 1 : r < 45 ? 2 : r < 70 ? 3 : r < 110 ? 4 : r < 180 ? 5 : 6;
+}
+const GR_TXT = { H: "horquilla", 1: "uno", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco", 6: "seis" };
+const GR_COL = { H: "#ff2a1a", 1: "#ff2a1a", 2: "#ff5a1a", 3: "#ffb020", 4: "#ffd84d", 5: "#9be36b", 6: "#3ddc84" };
+function rlSpeak(txt) {
+  try {
+    const s = window.speechSynthesis; if (!s) return;
+    if (!RL.voice) { const v = s.getVoices(); RL.voice = v.find(x => /^es[-_]ES/i.test(x.lang)) || v.find(x => /^es/i.test(x.lang)) || null; }
+    if (s.speaking && s.pending) s.cancel();
+    const u = new SpeechSynthesisUtterance(txt); u.lang = "es-ES"; u.rate = 1.15; u.pitch = 1; if (RL.voice) u.voice = RL.voice;
+    s.speak(u);
+  } catch (e) {}
+}
+function noteTxt(c) { return c.grade === "H" ? `horquilla ${c.dir}` : `${c.dir} ${GR_TXT[c.grade]}${c.mod ? " " + c.mod : ""}`; }
+
+/* ---------- Bucle: posición → carretera → notas ---------- */
+function rlTick() {
+  if (!RL.on || !RL.pos) return;
+  const pos = RL.pos;
+  if (!RL.area || dist(toXY(pos[0], pos[1], [RL.area.lat, RL.area.lon]), [0, 0]) > RL.area.r - 900) rlFetch(pos[0], pos[1]);
+  if (!RL.ways.length) return;
+  const s = rlSnap(pos, RL.hdg);
+  if (!s) { rlMsg(RL.fetching ? "Cargando carreteras…" : "Buscando la carretera…"); rlBox(null); return; }
+  const w = RL.ways[s.wi]; $("rlRoad").textContent = w.name;
+  const ahead = rlAhead(s, pos); RL.path = ahead;
+  const { corners } = rlCorners(ahead); RL.corners = corners;
+  const v = Math.max(RL.spd, 15) / 3.6, lead = Math.max(90, v * 5.5);   // ~5,5 s de antelación
+  const next = corners.find(c => c.e > 15);
+  rlBox(next, corners[corners.indexOf(next) + 1]);
+  // cantar la siguiente curva cuando entra en el margen de aviso (identificada por su posición en el mapa)
+  if (next && next.s <= lead) {
+    const q = rlLL(ahead, next.peak);
+    const known = q && [...RL.said].some(p => dist(toXY(p[0], p[1], q), [0, 0]) < 45);   // ya cantada (misma curva)
+    if (q && !known) {
+      RL.said.add(q); if (RL.said.size > 60) RL.said = new Set([...RL.said].slice(-30));
+      let txt = noteTxt(next);
+      const nn = corners[corners.indexOf(next) + 1];
+      if (nn && nn.s - next.e < 45) { txt += " y " + noteTxt(nn); const q2 = rlLL(ahead, nn.peak); if (q2) RL.said.add(q2); }
+      else if (nn && nn.s - next.e > 150 && nn.s - next.e < 400) txt += `, ${Math.round((nn.s - next.e) / 50) * 50}`;
+      rlSpeak(txt);
+    }
+  }
+  rlDraw(ahead, corners);
+}
+// punto del recorrido a X metros (para dibujar y para no repetir notas)
+function rlLL(ll, m) {
+  let acc = 0;
+  for (let i = 1; i < ll.length; i++) {
+    const d = dist(toXY(ll[i][0], ll[i][1], ll[i - 1]), [0, 0]);
+    if (acc + d >= m) { const t = (m - acc) / (d || 1); return [ll[i - 1][0] + (ll[i][0] - ll[i - 1][0]) * t, ll[i - 1][1] + (ll[i][1] - ll[i - 1][1]) * t]; }
+    acc += d;
+  }
+  return null;
+}
+function rlSlice(ll, m0, m1) {
+  const out = []; let acc = 0;
+  for (let i = 1; i < ll.length; i++) {
+    const d = dist(toXY(ll[i][0], ll[i][1], ll[i - 1]), [0, 0]);
+    if (acc + d >= m0 && acc <= m1) { if (!out.length) out.push(rlLL(ll, Math.max(m0, acc))); out.push(acc + d > m1 ? rlLL(ll, m1) : ll[i]); }
+    acc += d; if (acc > m1) break;
+  }
+  return out.filter(Boolean);
+}
+
+/* ---------- Pantalla ---------- */
+function rlMsg(t) { const e = $("rlMsg"); if (e) { e.textContent = t; e.hidden = !t; } }
+function rlArrow(c) {
+  if (!c) return "";
+  const r = c.dir === "derecha" ? 1 : -1, k = { H: 1, 1: .95, 2: .8, 3: .65, 4: .5, 5: .35, 6: .22 }[c.grade];
+  const ex = 50 + r * 38 * k, ey = 70 - 52 * (1 - k * .35), cx = 50, cy = 40 - 10 * k;
+  const end = c.grade === "H" ? `M50 92 L50 40 Q50 14 ${50 + r * 22} 14 Q${50 + r * 40} 14 ${50 + r * 40} 40 L${50 + r * 40} 70` : `M50 92 L50 62 Q${cx} ${cy} ${ex} ${ey}`;
+  const a = c.grade === "H" ? [50 + r * 40, 74, 90] : [ex, ey, Math.atan2(ey - cy, ex - cx) / RD + 90];
+  return `<svg viewBox="0 0 100 100"><path d="${end}" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(${a[0]} ${a[1]}) rotate(${a[2]})"><path d="M-13 6 L0 -12 L13 6 Z" fill="currentColor"/></g></svg>`;
+}
+function rlBox(c, nn) {
+  const box = $("rlNote");
+  if (!c) { box.style.setProperty("--nc", "#555"); $("rlArrow").innerHTML = ""; $("rlGrade").textContent = "—"; $("rlMod").textContent = RL.ways.length ? "RECTA" : ""; $("rlDist").textContent = ""; $("rlNext").textContent = ""; return; }
+  box.style.setProperty("--nc", GR_COL[c.grade]);
+  $("rlArrow").innerHTML = rlArrow(c);
+  $("rlGrade").textContent = c.grade === "H" ? "H" : c.grade;
+  $("rlMod").textContent = (c.dir === "derecha" ? "DERECHA" : "IZQUIERDA") + (c.mod && c.grade !== "H" ? " " + c.mod.toUpperCase() : "");
+  $("rlDist").textContent = c.s > 15 ? Math.round(c.s / 10) * 10 + " m" : "AHORA";
+  $("rlNext").textContent = nn ? "Luego: " + noteTxt(nn) + " · " + Math.round((nn.s - c.e) / 10) * 10 + " m" : "";
+}
+function rlDraw(ahead, corners) {
+  if (!RL.map) return;
+  RL.me.setLatLng(RL.pos);
+  RL.map.setView(RL.pos, RL.map.getZoom(), { animate: !RL.sim });
+  RL.lines.clearLayers();
+  L.polyline(ahead, { color: "#ffffff", weight: 5, opacity: .35 }).addTo(RL.lines);
+  corners.forEach(c => { const seg = rlSlice(ahead, c.s, c.e); if (seg.length > 1) L.polyline(seg, { color: GR_COL[c.grade], weight: 7, opacity: .95 }).addTo(RL.lines); });
+  if (RL.hdg != null) $("rlMe").style.transform = `rotate(${RL.hdg}deg)`;
+}
+
+/* ---------- GPS / simulación ---------- */
+function rlGps(p) {
+  if (RL.sim) return;
+  const pos = [p.coords.latitude, p.coords.longitude];
+  if (RL.prev && dist(toXY(pos[0], pos[1], RL.prev), [0, 0]) > 4) RL.hdg = brg([0, 0], toXY(pos[0], pos[1], RL.prev));
+  if (p.coords.heading != null && !isNaN(p.coords.heading) && (p.coords.speed || 0) > 2) RL.hdg = p.coords.heading;
+  RL.prev = RL.pos || pos; RL.pos = pos;
+  RL.spd = connected && V.spd != null ? V.spd * cfg.spdCorr : (p.coords.speed || 0) * 3.6;
+  $("rlSpd").textContent = Math.round(RL.spd);
+  rlTick();
+}
+// "Probar aquí": un coche virtual recorre la carretera desde donde estás, a la velocidad elegida
+function rlSimStep() {
+  if (!RL.sim || !RL.on) return;
+  if (!RL.simPath || RL.simS > 700) {   // recalcular el recorrido virtual
+    const s = rlSnap(RL.pos, RL.hdg); if (!s) { rlMsg("No encuentro carretera para simular."); return; }
+    RL.simPath = rlAhead(s, RL.pos); RL.simS = 0;
+  }
+  const dt = .25, v = RL.simV / 3.6; RL.simS += v * dt;
+  const p = rlLL(RL.simPath, RL.simS), p2 = rlLL(RL.simPath, RL.simS + 12);
+  if (!p) { RL.simPath = null; return; }
+  if (p2) RL.hdg = brg([0, 0], toXY(p2[0], p2[1], p));
+  RL.pos = p; RL.spd = RL.simV; $("rlSpd").textContent = RL.simV;
+  rlTick();
+}
+let rlWatch = null, rlSimI = 0;
+async function rlLoadMap() {
+  if (window.L) return true;
+  try {
+    await new Promise((ok, ko) => { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"; document.head.appendChild(l);
+      const s = document.createElement("script"); s.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"; s.onload = ok; s.onerror = ko; document.head.appendChild(s); });
+    return true;
+  } catch (e) { return false; }
+}
+async function rlInitMap() {
+  if (RL.map || !(await rlLoadMap())) return;
+  RL.map = L.map("rlMap", { zoomControl: false, attributionControl: true, dragging: false, keyboard: false, boxZoom: false, doubleClickZoom: false }).setView([40.67, -4.09], 16);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap · © CARTO" }).addTo(RL.map);
+  RL.lines = L.layerGroup().addTo(RL.map);
+  RL.me = L.marker([40.67, -4.09], { icon: L.divIcon({ className: "rlme", html: '<i id="rlMe"></i>', iconSize: [26, 26] }) }).addTo(RL.map);
+}
+async function rlStart(sim) {
+  await rlInitMap();
+  RL.on = true; RL.sim = !!sim; RL.said.clear(); RL.simPath = null; RL.simV = +$("rlSimV").value || 70;
+  $("rlGo").textContent = "Parar"; $("rlSim").hidden = true; $("rlSimV").hidden = true;
+  rlSpeak(sim ? "Simulación. Vamos." : "Copiloto listo.");
+  if (!navigator.geolocation) { rlMsg("Este navegador no da la ubicación."); return; }
+  rlMsg("Buscando GPS…");
+  if (sim) {
+    navigator.geolocation.getCurrentPosition(p => { RL.pos = [p.coords.latitude, p.coords.longitude]; RL.hdg = null; rlFetch(RL.pos[0], RL.pos[1]).then(() => { clearInterval(rlSimI); rlSimI = setInterval(rlSimStep, 250); }); },
+      () => rlMsg("Sin permiso de ubicación: actívalo para esta web en los ajustes de Brave."), { enableHighAccuracy: true, timeout: 15000 });
+  } else {
+    rlWatch = navigator.geolocation.watchPosition(rlGps, e => rlMsg(e.code === 1 ? "Sin permiso de ubicación: actívalo para esta web en los ajustes de Brave." : "Sin señal GPS."), { enableHighAccuracy: true, maximumAge: 0 });
+  }
+}
+function rlStop() {
+  RL.on = false; RL.sim = false; clearInterval(rlSimI);
+  if (rlWatch != null) navigator.geolocation.clearWatch(rlWatch); rlWatch = null;
+  try { speechSynthesis.cancel(); } catch (e) {}
+  $("rlGo").textContent = "Iniciar"; $("rlSim").hidden = false; $("rlSimV").hidden = false; rlMsg("");
+}
+$("rlGo").onclick = () => { unlockAudio(); RL.on ? rlStop() : rlStart(false); };
+$("rlSim").onclick = () => { unlockAudio(); rlStart(true); };
+$("rlZin").onclick = () => RL.map && RL.map.zoomIn();
+$("rlZout").onclick = () => RL.map && RL.map.zoomOut();
+try { speechSynthesis.onvoiceschanged = () => { RL.voice = null; }; } catch (e) {}
+
+
 buildCells();
 applyNight();
 setView(cfg.view);
 startDemo();
 setTimeout(tryAuto, 1500);
 })();
+
 </script>
