@@ -85,6 +85,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--ui);margin:0;
 .rld{font-family:var(--race);font-weight:600;font-size:clamp(16px,4vw,26px);color:var(--nc)}.rln{font-size:13px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rlmapw{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);min-height:0}
 #rlMap{position:absolute;inset:0;background:#111}
+.rltiles{filter:invert(1) hue-rotate(180deg) brightness(.8) contrast(.9) saturate(.6)}
 .rlmsg{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:500;background:rgba(0,0,0,.8);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:14px;white-space:nowrap}
 .rlhud{position:absolute;left:10px;bottom:10px;z-index:500;background:rgba(0,0,0,.75);border-radius:10px;padding:4px 10px;display:flex;align-items:baseline;gap:6px}
 .rlhud b{font-family:var(--race);font-size:30px}.rlhud span{font-size:12px;color:var(--dim)}.rlhud em{font-style:normal;font-size:12px;color:#aaa;margin-left:6px}
@@ -513,7 +514,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v7.2 · 14/11/2026 01:25"; // se cambia con cada actualización
+const APP_VERSION = "v7.3 · 14/11/2026 00:55"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -2271,14 +2272,16 @@ const brg = (a, b) => Math.atan2(b[0] - a[0], b[1] - a[1]) / RD;   // 0 = norte,
 const HW_RANK = { motorway: 6, trunk: 6, primary: 5, secondary: 4, tertiary: 3, unclassified: 2, residential: 1, motorway_link: 3, trunk_link: 3, primary_link: 3, secondary_link: 2, tertiary_link: 2, living_street: 0, service: 0 };
 
 /* ---------- Datos de la carretera (Overpass) ---------- */
-const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 async function rlFetch(lat, lon) {
   if (RL.fetching || performance.now() - RL.lastFetch < 15000) return;
   RL.fetching = true; RL.lastFetch = performance.now(); rlMsg("Cargando carreteras…");
-  const q = `[out:json][timeout:20];way(around:2500,${lat.toFixed(5)},${lon.toFixed(5)})["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"];out geom;`;
+  const q = `[out:json][timeout:15];way(around:2000,${lat.toFixed(5)},${lon.toFixed(5)})["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"];out geom;`;
   for (const url of OVERPASS) {
     try {
-      const r = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" } });
+      const ac = new AbortController(), to = setTimeout(() => ac.abort(), 12000);   // si un servidor tarda, se prueba el siguiente
+      const r = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" }, signal: ac.signal });
+      clearTimeout(to);
       if (!r.ok) continue;
       const j = await r.json();
       RL.ways = j.elements.filter(e => e.type === "way" && e.geometry && e.nodes).map(e => ({
@@ -2287,12 +2290,12 @@ async function rlFetch(lat, lon) {
       }));
       RL.nodeWays = new Map();
       RL.ways.forEach((w, wi) => w.nodes.forEach((n, ni) => { if (!RL.nodeWays.has(n)) RL.nodeWays.set(n, []); RL.nodeWays.get(n).push([wi, ni]); }));
-      RL.area = { lat, lon, r: 2500 };
+      RL.area = { lat, lon, r: 2000 };
       RL.fetching = false; rlMsg(RL.ways.length ? "" : "No hay carreteras cerca.");
       return;
     } catch (e) {}
   }
-  RL.fetching = false; rlMsg("Sin conexión con el mapa. Reintentando…");
+  RL.fetching = false; RL.lastFetch = performance.now() - 10000; rlMsg("No responde el servidor del mapa. Reintentando…");
 }
 
 /* ---------- En qué carretera vas y qué viene ---------- */
@@ -2304,7 +2307,7 @@ function rlSnap(pos, hdg) {
       const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1;
       const t = Math.max(0, Math.min(1, -(a[0] * dx + a[1] * dy) / L2));
       const d = Math.hypot(a[0] + t * dx, a[1] + t * dy);
-      if (d > 35) continue;
+      if (d > (RL.spd < 8 ? 150 : 35)) continue;   // parado (o en casa) se busca más lejos
       const sb = brg(a, b);
       let dir = 1, dh = 0;
       if (hdg != null) { dh = Math.abs(angN(sb - hdg)); if (dh > 90) { dir = -1; dh = 180 - dh; } }
@@ -2513,7 +2516,7 @@ async function rlLoadMap() {
 async function rlInitMap() {
   if (RL.map || !(await rlLoadMap())) return;
   RL.map = L.map("rlMap", { zoomControl: false, attributionControl: true, dragging: false, keyboard: false, boxZoom: false, doubleClickZoom: false }).setView([40.67, -4.09], 16);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap · © CARTO" }).addTo(RL.map);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap", className: "rltiles" }).addTo(RL.map);
   RL.lines = L.layerGroup().addTo(RL.map);
   RL.me = L.marker([40.67, -4.09], { icon: L.divIcon({ className: "rlme", html: '<i id="rlMe"></i>', iconSize: [26, 26] }) }).addTo(RL.map);
 }
