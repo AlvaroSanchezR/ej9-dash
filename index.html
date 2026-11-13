@@ -70,6 +70,12 @@ body{background:var(--bg);color:var(--fg);font-family:var(--ui);margin:0;
 
 .overlay{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.72);display:grid;place-items:center;
   padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.guide details{border-bottom:1px solid var(--line);padding:8px 2px}
+.guide summary{cursor:pointer;font-weight:600;font-size:15px;list-style:none;display:flex;justify-content:space-between;gap:10px}
+.guide summary::-webkit-details-marker{display:none}
+.guide summary i{font-style:normal;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
+.guide p{margin:6px 0 0;font-size:13.5px;line-height:1.45;color:#bbb}
+.guide b.ok{color:#3ddc84}.guide b.w{color:var(--amber)}.guide b.c{color:var(--red)}
 .sheet{width:min(440px,100%);max-height:100%;overflow:auto;background:#121212;border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
 .sheet h2{margin:0;font-size:17px;letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center}
 .sheet h2 span{font-size:13px;color:var(--dim);letter-spacing:0;font-weight:500}
@@ -359,6 +365,15 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
   </div>
 </div>
 
+<div class="overlay" id="infoOv" hidden>
+  <div class="sheet">
+    <h2>¿QUÉ ES CADA DATO?</h2>
+    <p class="note">Toca cada uno para ver qué es y qué valores son normales. A la derecha, lo que marca ahora. En la app: <b>blanco</b> normal, <b style="color:var(--amber)">naranja</b> vigilar, <b style="color:var(--red)">rojo</b> algo va mal.</p>
+    <div class="guide" id="guide"></div>
+    <button class="b" id="closeInfo">Cerrar</button>
+  </div>
+</div>
+
 <div class="overlay" id="menuOv" hidden>
   <div class="sheet">
     <h2>MENÚ <span id="stat">Desconectado</span></h2>
@@ -376,6 +391,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
       <button class="b" id="perfBtn">Cronómetro 0–100</button>
       <button class="b" id="dynoBtn">Dinamómetro</button>
       <button class="b" id="gpsBtn">Velocidad real (GPS)</button>
+      <button class="b" id="infoBtn">¿Qué es cada dato?</button>
       <button class="b" id="closeMenu">Cerrar</button>
     </div>
   </div>
@@ -454,7 +470,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v6.4 · 14/11/2026 00:25"; // se cambia con cada actualización
+const APP_VERSION = "v6.5 · 14/11/2026 00:35"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -1467,7 +1483,7 @@ function startDemo() {
 function stopDemo() { if (demoT) { clearInterval(demoT); demoT = null; $("demoBtn").textContent = "Demo"; if (!connected) status("Desconectado", ""); } }
 
 /* ---------- UI ---------- */
-const OVS = ["menuOv", "dtcOv", "cfgOv", "pickOv", "logOv", "perfOv", "dynoOv", "gpsOv"];
+const OVS = ["infoOv", "menuOv", "dtcOv", "cfgOv", "pickOv", "logOv", "perfOv", "dynoOv", "gpsOv"];
 function openOv(id) { OVS.forEach(o => $(o).hidden = o !== id); }
 function closeOv() { OVS.forEach(o => $(o).hidden = true); $("clearBox").hidden = true; gpsStop(); }
 OVS.forEach(o => $(o).addEventListener("click", e => { if (e.target.id === o) closeOv(); }));
@@ -1557,6 +1573,36 @@ $("testSound").onclick = () => { unlockAudio(); beep("crit"); };
 $("demoBtn").onclick = () => { demoT ? stopDemo() : startDemo(); closeOv(); };
 $("dtcBtn").onclick = () => openOv("dtcOv");
 $("cfgBtn").onclick = openCfg;
+/* ---------- Guía: qué es cada dato y valores normales ---------- */
+const GUIDE = [
+  ["rpm", "Revoluciones (rpm)", "Vueltas por minuto del motor.", "Ralentí en caliente: <b class=ok>700–900</b>. En frío algo más alto (1000–1400) los primeros minutos.", "Ralentí que sube y baja solo: válvula de ralentí (IACV) sucia o toma de aire."],
+  ["spd", "Velocidad", "La que calcula la centralita por las ruedas. Suele ser la real; el cuadro del coche marca un 5–8 % de más por ley.", "", ""],
+  ["water", "Temperatura del agua", "Temperatura del refrigerante del motor. La más importante de vigilar.", "En marcha: <b class=ok>85–95 °C</b>. Con el ventilador puede llegar a ~100 °C en atasco.", "<b class=w>Más de 100 °C</b>: vigila (ventilador, nivel de agua). <b class=c>Más de 105 °C</b>: para el coche. Si nunca pasa de 70–75 °C: termostato abierto."],
+  ["oil", "Temperatura del aceite", "En el Civic se <b>estima</b> a partir del agua (no tiene sensor). Va por detrás del agua: tarda unos 10–15 min más en calentarse.", "<b class=ok>90–110 °C</b> en marcha. Hasta 80 °C no conviene apurar el motor (por eso baja la zona roja).", "<b class=c>Más de 130 °C</b>: aceite demasiado caliente."],
+  ["iat", "Temperatura de admisión", "Temperatura del aire que entra al motor. Cuanto más frío, más potencia.", "Unos <b class=ok>5–15 °C más que la calle</b> en marcha. Parado en atasco sube.", "<b class=w>Más de 55 °C</b>: el motor respira aire caliente del vano (pierde potencia)."],
+  ["mapm", "Presión del colector (MAP)", "Presión dentro del colector de admisión. Dice cuánto aire entra. El Civic calcula la gasolina con esto.", "Ralentí: <b class=ok>300–400 mbar</b>. A fondo: la presión de la calle (~1000 al nivel del mar, ~900 en Guadarrama). Soltando gas en marcha: 200 o menos.", "Ralentí en caliente <b class=w>por encima de 500</b>: toma de aire (manguitos, servofreno, junta del colector)."],
+  ["maf", "Caudal de aire (MAF)", "Gramos de aire por segundo que entran (coches con caudalímetro, no el Civic).", "Ralentí: <b class=ok>2–5 g/s</b> en un 1.4–1.6. Sube con las rpm y el acelerador.", "Valores bajos para las rpm: caudalímetro sucio."],
+  ["tps", "Acelerador (TPS)", "Cuánto está abierta la mariposa de admisión.", "Pie levantado: <b class=ok>0–2 %</b>. A fondo: <b class=ok>~100 %</b>.", "Si con el pie levantado marca más de 5 %, el sensor está mal ajustado."],
+  ["load", "Carga del motor", "Cuánto le estás pidiendo al motor respecto a lo máximo que puede dar.", "Ralentí: <b class=ok>15–30 %</b>. Crucero: 30–60 %. A fondo: cerca de 100 %.", ""],
+  ["adv", "Avance de encendido", "Cuántos grados antes de arriba salta la chispa. Más avance = más rendimiento, hasta que pica.", "Ralentí: <b class=ok>8–16°</b>. En marcha suave: 25–40°. Con carga baja algo.", "Si con el motor cargado <b class=w>baja a 0 o negativo</b>: la centralita está retrasando por picado (gasolina mala, carbonilla, sensor de picado)."],
+  ["o2", "Sonda lambda (voltaje)", "Mide el oxígeno del escape para saber si la mezcla va rica o pobre. Es la normal de toda la vida.", "En caliente tiene que <b class=ok>oscilar rápido entre 0,1 y 0,9 V</b> (varias veces por segundo). Ese ir y venir es la centralita regulando.", "Se queda <b class=w>casi plana</b>: sonda perezosa. <b class=c>Plana del todo</b>: sonda muerta. Siempre baja (&lt;0,3): mezcla pobre o toma de aire. Siempre alta (&gt;0,7): mezcla rica."],
+  ["lam", "Lambda (banda ancha)", "Lo mismo que la sonda, pero en número directo de la mezcla (coches modernos). 1 = mezcla perfecta.", "Circulando: <b class=ok>0,98–1,02</b>. A fondo puede bajar a 0,85–0,9 (enriquece para proteger). Soltando gas sube mucho (corte de inyección).", "Lejos de 1 circulando normal: <b class=w>&lt;0,9 rica</b>, <b class=w>&gt;1,1 pobre</b>."],
+  ["stft", "Corrección corta (STFT)", "Ajuste instantáneo de gasolina que hace la centralita según la sonda. Positivo = añade gasolina, negativo = quita.", "Oscila alrededor de 0: <b class=ok>entre −10 y +10 %</b>.", "<b class=w>Siempre por encima de +10</b>: le falta gasolina o entra aire falso. <b class=w>Siempre por debajo de −10</b>: le sobra gasolina (inyector que gotea, regulador)."],
+  ["ltft", "Corrección larga (LTFT)", "Lo que la centralita ha aprendido con el tiempo a base de la corta. Se mueve muy despacio y se guarda.", "<b class=ok>Entre −10 y +10 %</b>. Lo ideal, cerca de 0. Lo de verdad es la suma de corta + larga.", "Igual que la corta: muy positiva = falta gasolina o toma de aire; muy negativa = sobra."],
+  ["volt", "Batería", "Tensión medida por el propio adaptador en la toma OBD.", "Motor parado: <b class=ok>12,4–12,7 V</b>. Motor en marcha: <b class=ok>13,8–14,7 V</b> (el alternador cargando).", "En marcha <b class=w>por debajo de 13,2</b>: el alternador carga poco. <b class=c>Por encima de 15</b>: el regulador falla. Parado por debajo de 12,2: batería baja."],
+  ["fuel", "Consumo", "Se <b>calcula</b> con el aire que entra al motor (el Civic no da el consumo). Se afina con la calibración del depósito.", "Depende de cómo conduzcas.", ""],
+  ["glon", "Fuerzas G", "Del acelerómetro del móvil, no del coche. 1 g = la fuerza de la gravedad.", "Coche de calle: frenada fuerte ~0,8–1 g, aceleración 0,2–0,4 g, curva rápida 0,5–0,8 g.", ""],
+];
+function openInfo() {
+  $("guide").innerHTML = GUIDE.map(([k, t, what, ok, bad]) => {
+    const v = V[k] == null ? "" : fmtVal(k, V[k]) + " " + (SENSORS[k] ? SENSORS[k].u : "");
+    return `<details><summary>${t}<i>${v}</i></summary><p>${what}</p>${ok ? `<p><b>Normal:</b> ${ok}</p>` : ""}${bad ? `<p><b>Si no:</b> ${bad}</p>` : ""}</details>`;
+  }).join("") + `<details><summary>EV</summary><p>Solo en híbridos: el motor de gasolina está parado y el coche se mueve con el eléctrico. No es un fallo.</p></details>`
+    + `<details><summary>Testigo de motor (ámbar)</summary><p>Solo aparece si la centralita tiene la luz de avería encendida o códigos guardados. Míralos en Menú → Averías.</p></details>`;
+  openOv("infoOv");
+}
+$("infoBtn").onclick = openInfo;
+$("closeInfo").onclick = closeOv;
 $("tripBtn").onclick = () => { resetTrip(); closeOv(); };
 $("closeCfg").onclick = closeOv;
 $("closeDtc").onclick = closeOv;
