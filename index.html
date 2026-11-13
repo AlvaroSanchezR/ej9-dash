@@ -418,6 +418,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
   <div class="sheet">
     <h2>MENÚ <span id="stat">Desconectado</span></h2>
     <div class="btns">
+      <button class="b pri" id="updBtn" hidden>Actualizar ahora</button>
       <button class="b pri" id="connBtn">Conectar OBD</button>
       <button class="b" id="demoBtn">Demo</button>
       <button class="b" id="dtcBtn">Averías</button>
@@ -512,7 +513,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v7.1 · 14/11/2026 01:20"; // se cambia con cada actualización
+const APP_VERSION = "v7.2 · 14/11/2026 01:25"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -2230,12 +2231,19 @@ async function checkUpdate() {
 function applyUpdate() {
   if (!newVer) return;
   if (connected || connecting || rec || perf.state === "run" || perf.state === "ready") {
-    if (!updToast) { updToast = true; toast(`Hay una versión nueva (${newVer.split(" ")[0]}). Se instalará al desconectar.`, "ok"); }
+    if (!updToast) { updToast = true; toast(`Hay una versión nueva (${newVer.split(" ")[0]}). Menú → Actualizar ahora, o se instalará al desconectar.`, "ok"); }
+    $("updBtn").hidden = false; $("updBtn").textContent = "Actualizar ahora (" + newVer.split(" ")[0] + ")";
     return;
   }
   saveTank(); saveOdo();
   location.replace(location.pathname + "?v=" + Date.now().toString(36));
 }
+// Botón del menú: actualiza ya, aunque esté conectado (desconecta, guarda y recarga)
+$("updBtn").onclick = async () => {
+  try { if (connected) await disconnect(); } catch (e) {}
+  saveTank(); saveOdo();
+  location.replace(location.pathname + "?v=" + Date.now().toString(36));
+};
 setTimeout(checkUpdate, 3000);
 setInterval(() => { if (performance.now() - GM.real < 1000) setVal("glon", GM.lon); }, 200);
 setInterval(checkUpdate, 5 * 60000);
