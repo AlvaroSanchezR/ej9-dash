@@ -465,6 +465,8 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
     <div class="cfg"><label for="cfgWater">Aviso agua (°C)</label><input id="cfgWater" type="number" step="1"></div>
     <div class="cfg"><label for="cfgVolt">Aviso batería bajo (V)</label><input id="cfgVolt" type="number" step="0.1"></div>
     <div class="cfg"><label for="cfgTheme">Estilo de la esfera</label><select id="cfgTheme"></select></div>
+    <div class="cfg"><label for="cfgOrient">Orientación de la pantalla</label><select id="cfgOrient"><option value="land">Horizontal</option><option value="port">Vertical</option><option value="auto">Girar con el móvil</option></select></div>
+    <label class="chk" for="cfgRallyPort">Rutas siempre en vertical<input id="cfgRallyPort" type="checkbox"></label>
     <label class="chk" for="cfgFlash">Luz de cambio a pantalla completa<input id="cfgFlash" type="checkbox"></label>
     <label class="chk" for="cfgAuto2">Cambio automático (pone D en vez de calcular marchas)<input id="cfgAuto2" type="checkbox"></label>
     <label class="chk" for="cfgEco">Ahorro de batería (30 imágenes/s, sin brillos)<input id="cfgEco" type="checkbox"></label>
@@ -510,7 +512,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v7.0 · 14/11/2026 01:10"; // se cambia con cada actualización
+const APP_VERSION = "v7.1 · 14/11/2026 01:20"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -521,7 +523,7 @@ let SHOP = SHOP_ALL.slice(0, 12);
 // Si el coche no da un dato, se usa uno equivalente: sonda de banda ancha en vez de la clásica, caudalímetro en vez de presión de colector
 const SUBS = { o2: "lam", mapm: "maf", oil: "iat" };
 const DEF = { red: 7000, shift: 6500, vtec: 0, water: 105, volt: 12.0, name: "Civic EJ9", cc: 1396, price: 1.55, fcal: 1.0, tankL: 45, gears: GEARS_EJ9,
-  arcs: DEF_ARCS.slice(), cells: DEF_CELLS.slice(), view: "full", night: "auto", sound: true, autoConn: true, lastConn: "", hook: "", theme: "blanca", flash: true, eco: true, auto: false, mass: 1130, spdCorr: 1 };
+  arcs: DEF_ARCS.slice(), cells: DEF_CELLS.slice(), view: "full", night: "auto", sound: true, autoConn: true, lastConn: "", hook: "", theme: "blanca", flash: true, eco: true, auto: false, orient: "land", rallyPort: true, mass: 1130, spdCorr: 1 };
 let cfg = { ...DEF };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem("ej9cfg2") || "{}")); } catch (e) {}
 
@@ -1536,7 +1538,7 @@ function tankInfo() {
 function openCfg() {
   NUM_FIELDS.forEach(([id, k]) => $(id).value = cfg[k]);
   $("cfgName").value = cfg.name; $("fillL").value = "";
-  $("cfgSound").checked = cfg.sound; $("cfgAuto").checked = cfg.autoConn; $("cfgFlash").checked = cfg.flash; $("cfgEco").checked = cfg.eco !== false; $("cfgAuto2").checked = !!cfg.auto; $("cfgTheme").value = cfg.theme;
+  $("cfgSound").checked = cfg.sound; $("cfgAuto").checked = cfg.autoConn; $("cfgFlash").checked = cfg.flash; $("cfgOrient").value = cfg.orient || "land"; $("cfgRallyPort").checked = cfg.rallyPort !== false; $("cfgEco").checked = cfg.eco !== false; $("cfgAuto2").checked = !!cfg.auto; $("cfgTheme").value = cfg.theme;
   $("cfgOdo").value = odo.km != null ? Math.round(odo.km) : ""; $("cfgHook").value = cfg.hook; odoInfo();
   gearInfo(); tankInfo(); openOv("cfgOv");
 }
@@ -1689,6 +1691,7 @@ function setView(v) {
   if (!VIEWS.includes(v)) v = "full";
   cfg.view = v; saveCfg();
   $("app").hidden = v !== "full"; $("street").hidden = v !== "street"; $("shop").hidden = v !== "shop"; $("gview").hidden = v !== "g"; $("rally").hidden = v !== "rally";
+  applyOrient();
   if (v === "rally") setTimeout(() => rlInitMap().then(() => RL.map && RL.map.invalidateSize()), 0);   // tras cargar todo el código
   [...$("dots").children].forEach(b => b.classList.toggle("on", b.dataset.v === v));
   showDots();
@@ -1955,7 +1958,13 @@ async function toggleFull() {
     if (!document.fullscreenElement) await document.documentElement.requestFullscreen({ navigationUI: "hide" });
     else await document.exitFullscreen();
   } catch (e) { toast("Este navegador no deja poner pantalla completa aquí. Instala la app en la pantalla de inicio.", ""); }
-  try { if (document.fullscreenElement && screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape"); } catch (e) {}
+  applyOrient();
+}
+/* Orientación: horizontal, vertical o libre; la pantalla de Rutas puede ir siempre en vertical */
+async function applyOrient() {
+  const o = screen.orientation; if (!o || !o.lock) return;
+  const want = cfg.view === "rally" && cfg.rallyPort ? "portrait" : ({ land: "landscape", port: "portrait" })[cfg.orient] || null;
+  try { if (want) await o.lock(want); else o.unlock(); } catch (e) {}   // solo funciona desde el icono o en pantalla completa
 }
 document.addEventListener("fullscreenchange", () => { $("fullBtn").textContent = document.fullscreenElement ? "Salir de pantalla completa" : "Pantalla completa"; });
 $("fullBtn").onclick = () => { closeOv(); toggleFull(); };
@@ -1964,6 +1973,8 @@ $("fullBtn").onclick = () => { closeOv(); toggleFull(); };
 $("cfgTheme").innerHTML = Object.keys(THEMES).map(k => `<option value="${k}">${THEMES[k].n}</option>`).join("");
 $("cfgTheme").onchange = e => { cfg.theme = e.target.value; saveCfg(); build(); status($("stat").textContent, mode); };
 $("cfgFlash").onchange = e => { cfg.flash = e.target.checked; saveCfg(); };
+$("cfgOrient").onchange = e => { cfg.orient = e.target.value; saveCfg(); applyOrient(); };
+$("cfgRallyPort").onchange = e => { cfg.rallyPort = e.target.checked; saveCfg(); applyOrient(); };
 $("cfgAuto2").onchange = e => { cfg.auto = e.target.checked; saveCfg(); render(); };
 $("cfgEco").onchange = e => { cfg.eco = e.target.checked; saveCfg(); AC.led = null; };
 
