@@ -515,7 +515,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v7.7 · 14/11/2026 01:15"; // se cambia con cada actualización
+const APP_VERSION = "v7.8 · 14/11/2026 01:30"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -2275,40 +2275,154 @@ const HW_RANK = { motorway: 6, trunk: 6, primary: 5, secondary: 4, tertiary: 3, 
 
 /* ---------- Datos de la carretera (Overpass) ---------- */
 const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://lz4.overpass-api.de/api/interpreter", "https://z.overpass-api.de/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
-async function rlFetch(lat, lon) {
-  if (RL.fetching || performance.now() - RL.lastFetch < 15000) return;
-  RL.fetching = true; RL.lastFetch = performance.now();
-  // recuadro de ~2 x 2 km; si vas rápido, adelantado hacia donde vas (más rápido para el servidor que un radio)
-  if (RL.hdg != null && RL.spd > 20) { lat += 700 / mPerLat * Math.cos(RL.hdg * RD); lon += 700 / (mPerLat * Math.cos(lat * RD)) * Math.sin(RL.hdg * RD); }
+/* Las carreteras salen de los "tiles vectoriales" de OpenFreeMap (gratis, sin clave, servidos por CDN: rápidos y sin colas).
+   Si fallan, se prueba Overpass como reserva. */
+const MVT_Z = 14;
+function pbfRead(buf) {
+  let p = 0;
+  const v = () => { let r = 0, s = 0, b; do { b = buf[p++]; r += (b & 0x7f) * 2 ** s; s += 7; } while (b & 0x80); return r; };
+  return {
+    get end() { return p >= buf.length; }, pos: () => p, setPos: x => p = x, varint: v,
+    field() { const k = v(); return [Math.floor(k / 8), k & 7]; },
+    bytes() { const n = v(), s = buf.subarray(p, p + n); p += n; return s; },
+    skip(t) { if (t === 0) v(); else if (t === 1) p += 8; else if (t === 2) p += v(); else if (t === 5) p += 4; },
+  };
+}
+const td = new TextDecoder();
+// Decodifica un tile MVT y devuelve las líneas de la capa "transportation" en coordenadas del tile (0..extent)
+function mvtRoads(buf) {
+  const out = []; const R = pbfRead(buf);
+  while (!R.end) {
+    const [f, t] = R.field();
+    if (f !== 3 || t !== 2) { R.skip(t); continue; }
+    const L = pbfRead(R.bytes()); let name = "", extent = 4096; const feats = [], keys = [], vals = [];
+    while (!L.end) {
+      const [lf, lt] = L.field();
+      if (lf === 1) name = td.decode(L.bytes());
+      else if (lf === 2) feats.push(L.bytes());
+      else if (lf === 3) keys.push(td.decode(L.bytes()));
+      else if (lf === 4) { const V = pbfRead(L.bytes()); let val = null; while (!V.end) { const [vf, vt] = V.field(); if (vf === 1) val = td.decode(V.bytes()); else if (vf === 4 || vf === 5) val = V.varint(); else if (vf === 6) { const z = V.varint(); val = z % 2 ? -(z + 1) / 2 : z / 2; } else if (vf === 7) val = !!V.varint(); else V.skip(vt); } vals.push(val); }
+      else if (lf === 5) extent = L.varint();
+      else L.skip(lt);
+    }
+    if (name !== "transportation") continue;
+    for (const fb of feats) {
+      const F = pbfRead(fb); let tags = [], type = 0, geom = [];
+      while (!F.end) {
+        const [ff, ft] = F.field();
+        if (ff === 2) { const P = pbfRead(F.bytes()); while (!P.end) tags.push(P.varint()); }
+        else if (ff === 3) type = F.varint();
+        else if (ff === 4) { const P = pbfRead(F.bytes()); while (!P.end) geom.push(P.varint()); }
+        else F.skip(ft);
+      }
+      if (type !== 2) continue;
+      const props = {}; for (let i = 0; i + 1 < tags.length; i += 2) props[keys[tags[i]]] = vals[tags[i + 1]];
+      let x = 0, y = 0, i = 0, line = null; const lines = [];
+      while (i < geom.length) {
+        const c = geom[i++], id = c & 7, n = c >> 3;
+        for (let k = 0; k < n && id !== 7; k++) {
+          const dx = geom[i++], dy = geom[i++]; x += dx % 2 ? -(dx + 1) / 2 : dx / 2; y += dy % 2 ? -(dy + 1) / 2 : dy / 2;
+          if (id === 1) { line = [[x, y]]; lines.push(line); } else if (line) line.push([x, y]);
+        }
+      }
+      lines.forEach(l => out.push({ props, pts: l, extent }));
+    }
+  }
+  return out;
+}
+// Recorta una línea al cuadro del tile (los tiles traen un margen que se solapa con el vecino)
+function clipLine(pts, E) {
+  const res = []; let cur = null;
+  const inside = p => p[0] >= 0 && p[0] <= E && p[1] >= 0 && p[1] <= E;
+  for (let i = 0; i < pts.length - 1; i++) {
+    let [x0, y0] = pts[i], [x1, y1] = pts[i + 1], t0 = 0, t1 = 1; const dx = x1 - x0, dy = y1 - y0;
+    let ok = true;
+    for (const [pp, q] of [[-dx, x0], [dx, E - x0], [-dy, y0], [dy, E - y0]]) {
+      if (pp === 0) { if (q < 0) { ok = false; break; } continue; }
+      const r = q / pp; if (pp < 0) { if (r > t1) { ok = false; break; } if (r > t0) t0 = r; } else { if (r < t0) { ok = false; break; } if (r < t1) t1 = r; }
+    }
+    if (!ok) { cur = null; continue; }
+    const a = [x0 + t0 * dx, y0 + t0 * dy], b = [x0 + t1 * dx, y0 + t1 * dy];
+    if (!cur || t0 > 0) { cur = [a]; res.push(cur); }
+    cur.push(b); if (t1 < 1) cur = null;
+  }
+  return res.filter(l => l.length > 1);
+}
+const OMT_RANK = { motorway: 6, trunk: 6, primary: 5, secondary: 4, tertiary: 3, minor: 1 };
+let tileUrl = null;
+async function rlFetchTiles(lat, lon) {
+  if (!tileUrl) {
+    const tj = await (await fetch("https://tiles.openfreemap.org/planet")).json();
+    tileUrl = tj.tiles[0];
+  }
+  const n = 2 ** MVT_Z, cx = Math.floor((lon + 180) / 360 * n), cy = Math.floor((1 - Math.log(Math.tan(lat * RD) + 1 / Math.cos(lat * RD)) / Math.PI) / 2 * n);
+  const jobs = [];
+  for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) jobs.push([cx + dx, cy + dy]);
+  const ways = [];
+  let fails = 0, lastErr = null;
+  await Promise.all(jobs.map(async ([x, y]) => {
+    const ac = new AbortController(), to = setTimeout(() => ac.abort(), 12000);
+    try {
+      const r = await fetch(tileUrl.replace("{z}", MVT_Z).replace("{x}", x).replace("{y}", y), { signal: ac.signal });
+      if (!r.ok) throw new Error(r.status);
+      const buf = new Uint8Array(await r.arrayBuffer());
+      for (const f of mvtRoads(buf)) {
+        const rank = OMT_RANK[f.props.class]; if (rank == null) continue;
+        const E = f.extent;
+        for (const l of clipLine(f.pts, E)) {
+          const g = l.map(([px, py]) => {
+            const lo = (x + px / E) / n * 360 - 180, yy = Math.PI * (1 - 2 * (y + py / E) / n);
+            return [Math.atan(Math.sinh(yy)) / RD, lo];
+          });
+          ways.push({ id: ways.length + 1, g, rank, name: f.props.ref || f.props.name || "", oneway: f.props.oneway === 1 || f.props.class === "motorway" });
+        }
+      }
+    } catch (e) { fails++; lastErr = e; } finally { clearTimeout(to); }
+  }));
+  if (fails === jobs.length) throw lastErr;   // si falla algún tile suelto, se sigue con los demás
+  // Uniones: cada punto se identifica por su posición redondeada (~1 m); así se conectan cruces y bordes de tile
+  const key = p => Math.round(p[0] * 1e5) + "," + Math.round(p[1] * 1e5);
+  ways.forEach(w => w.nodes = w.g.map(key));
+  return ways;
+}
+async function rlFetchOverpass(lat, lon) {
   const dLat = 0.009, dLon = 0.009 / Math.cos(lat * RD);
   const bb = [lat - dLat, lon - dLon, lat + dLat, lon + dLon].map(v => v.toFixed(5)).join(",");
   const q = `[out:json][timeout:25];way(${bb})["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"];out geom;`;
-  const errs = [];
-  for (const [n, url] of OVERPASS.entries()) {
-    rlMsg(`Cargando carreteras… (servidor ${n + 1}/${OVERPASS.length})`);
-    const ac = new AbortController(), to = setTimeout(() => ac.abort(), 25000);   // si un servidor tarda, se prueba el siguiente
+  for (const url of OVERPASS) {
+    const ac = new AbortController(), to = setTimeout(() => ac.abort(), 25000);
     try {
       const r = await fetch(url + "?data=" + encodeURIComponent(q), { signal: ac.signal });
-      if (!r.ok) { errs.push(`${n + 1}: ${r.status}`); continue; }
+      if (!r.ok) continue;
       const j = await r.json();
-      clearTimeout(to);
-      RL.ways = j.elements.filter(e => e.type === "way" && e.geometry && e.nodes).map(e => ({
+      return j.elements.filter(e => e.type === "way" && e.geometry && e.nodes).map(e => ({
         id: e.id, nodes: e.nodes, g: e.geometry.map(p => [p.lat, p.lon]), rank: HW_RANK[e.tags.highway] ?? 1,
         name: e.tags.ref || e.tags.name || "", oneway: e.tags.oneway === "yes" || /motorway/.test(e.tags.highway) || e.tags.junction === "roundabout",
       }));
-      RL.nodeWays = new Map();
-      RL.ways.forEach((w, wi) => w.nodes.forEach((nd, ni) => { if (!RL.nodeWays.has(nd)) RL.nodeWays.set(nd, []); RL.nodeWays.get(nd).push([wi, ni]); }));
-      RL.area = { lat, lon, r: 950 };
-      RL.fetching = false; log(`Rutas: ${RL.ways.length} vías cargadas (servidor ${n + 1})`);
-      rlMsg(RL.ways.length ? "" : "No hay carreteras cerca.");
-      if (RL.pos) rlTick();
-      return;
-    } catch (e) { errs.push(`${n + 1}: ${e.name === "AbortError" ? "tarda demasiado" : e.message}`); }
-    finally { clearTimeout(to); }
+    } catch (e) {} finally { clearTimeout(to); }
   }
-  RL.fetching = false; RL.lastFetch = performance.now() - 5000;
-  log("Rutas: sin respuesta · " + errs.join(" · "));
-  rlMsg("No responde el mapa (" + errs.join(" · ") + "). Reintento en 10 s…");
+  throw new Error("Overpass sin respuesta");
+}
+async function rlFetch(lat, lon) {
+  if (RL.fetching || performance.now() - RL.lastFetch < 8000) return;
+  RL.fetching = true; RL.lastFetch = performance.now();
+  if (RL.hdg != null && RL.spd > 20) { lat += 700 / mPerLat * Math.cos(RL.hdg * RD); lon += 700 / (mPerLat * Math.cos(lat * RD)) * Math.sin(RL.hdg * RD); }   // si vas rápido, adelantado hacia donde vas
+  let ways = null, err = "";
+  rlMsg("Cargando carreteras…");
+  try { ways = await rlFetchTiles(lat, lon); log(`Rutas: ${ways.length} tramos (OpenFreeMap)`); }
+  catch (e) { err = "mapa: " + (e.name === "AbortError" ? "tarda demasiado" : e.message); }
+  if (!ways || !ways.length) {
+    rlMsg("Cargando carreteras… (servidor de reserva)");
+    try { ways = await rlFetchOverpass(lat, lon); ways.small = true; log(`Rutas: ${ways.length} vías (Overpass)`); } catch (e) { err += " · reserva: sin respuesta"; }
+  }
+  RL.fetching = false;
+  if (!ways || !ways.length) { RL.lastFetch = performance.now() - 3000; log("Rutas: " + err); rlMsg(`No se pudieron cargar las carreteras (${err}). Reintento en 5 s…`); return; }
+  RL.ways = ways;
+  RL.nodeWays = new Map();
+  RL.ways.forEach((w, wi) => w.nodes.forEach((nd, ni) => { if (!RL.nodeWays.has(nd)) RL.nodeWays.set(nd, []); RL.nodeWays.get(nd).push([wi, ni]); }));
+  RL.area = { lat, lon, r: ways.small ? 950 : 2600 };
+  rlMsg("");
+  if (RL.pos) rlTick();
 }
 
 /* ---------- En qué carretera vas y qué viene ---------- */
@@ -2343,7 +2457,10 @@ function rlAhead(s, pos) {
     const p = w.g[idx]; len += dist(toXY(p[0], p[1], pos), toXY(pts[pts.length - 1][0], pts[pts.length - 1][1], pos)); pts.push(p);
     const nid = w.nodes[idx], next = idx + dir;
     const endOfWay = next < 0 || next >= w.g.length;
-    const links = (RL.nodeWays.get(nid) || []).filter(([wj]) => wj !== wi);
+    let links = (RL.nodeWays.get(nid) || []).filter(([wj]) => wj !== wi);
+    if (endOfWay && !links.length) {
+      RL.ways.forEach((W, wj) => { if (wj === wi) return; W.g.forEach((q, nj) => { if (dist(toXY(q[0], q[1], p), [0, 0]) < 10) links.push([wj, nj]); }); });
+    }
     if (!endOfWay && !links.length) { idx = next; continue; }
     // cruce o fin de vía: elegir la continuación más recta
     const prevP = pts[pts.length - 2] || pos, inB = brg(toXY(prevP[0], prevP[1], pos), toXY(p[0], p[1], pos));
@@ -2419,7 +2536,7 @@ function noteTxt(c) { return c.grade === "H" ? `horquilla ${c.dir}` : `${c.dir} 
 function rlTick() {
   if (!RL.on || !RL.pos) return;
   const pos = RL.pos;
-  if (!RL.area || dist(toXY(pos[0], pos[1], [RL.area.lat, RL.area.lon]), [0, 0]) > RL.area.r - 450) rlFetch(pos[0], pos[1]);
+  if (!RL.area || dist(toXY(pos[0], pos[1], [RL.area.lat, RL.area.lon]), [0, 0]) > RL.area.r - (RL.area.r > 1500 ? 1100 : 450)) rlFetch(pos[0], pos[1]);
   if (!RL.ways.length) return;
   const s = rlSnap(pos, RL.hdg);
   if (!s) { if (!RL.fetching) rlMsg(`Buscando la carretera… (${RL.ways.length} vías, la más cercana a ${isFinite(RL.nearest) ? Math.round(RL.nearest) + " m" : "?"})`); rlBox(null); return; }
