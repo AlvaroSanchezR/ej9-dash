@@ -515,7 +515,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v7.9 · 14/11/2026 01:20"; // se cambia con cada actualización
+const APP_VERSION = "v8.0 · 14/11/2026 01:25"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -2422,13 +2422,14 @@ async function rlFetch(lat, lon) {
   RL.ways.forEach((w, wi) => w.nodes.forEach((nd, ni) => { if (!RL.nodeWays.has(nd)) RL.nodeWays.set(nd, []); RL.nodeWays.get(nd).push([wi, ni]); }));
   RL.area = { lat, lon, r: ways.small ? 950 : 2600 };
   rlMsg("");
-  if (RL.pos) rlTick();
+  if (RL.pos && !RL.sim) rlTick();   // en la simulación lo coloca rlSimStep
 }
 
 /* ---------- En qué carretera vas y qué viene ---------- */
-function rlSnap(pos, hdg, maxD) {
+function rlSnap(pos, hdg, maxD, minRank) {
   const o = pos; let best = null; RL.nearest = Infinity;
   RL.ways.forEach((w, wi) => {
+    if (minRank && w.rank < minRank) return;
     for (let i = 0; i < w.g.length - 1; i++) {
       const a = toXY(w.g[i][0], w.g[i][1], o), b = toXY(w.g[i + 1][0], w.g[i + 1][1], o);
       const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1;
@@ -2557,7 +2558,7 @@ function rlTick() {
   if (!RL.ways.length) return;
   // El recorrido de delante se calcula UNA vez y se queda fijo (las notas no bailan). Se rehace si te sales de él o se acaba.
   let R = RL.route, prog = R ? rlProg(R, pos) : null;
-  if (!R || prog.off > 30 || R.len - prog.m < 600) {
+  if (!R || prog.off > 30 || (R.len > 1300 && R.len - prog.m < 600)) {   // (si la carretera se acaba antes, no se rehace sin parar)
     const s = rlSnap(pos, RL.hdg);
     if (!s) { if (!RL.fetching) rlMsg(`Buscando la carretera… (${RL.ways.length} vías, la más cercana a ${isFinite(RL.nearest) ? Math.round(RL.nearest) + " m" : "?"})`); rlBox(null); return; }
     $("rlRoad").textContent = RL.ways[s.wi].name;
@@ -2651,15 +2652,17 @@ function rlGps(p) {
 function rlSimStep() {
   if (!RL.sim || !RL.on) return;
   if (!RL.ways.length) { rlFetch(RL.pos[0], RL.pos[1]); return; }   // aún sin carreteras: pedirlas (con su mensaje)
-  if (!RL.simPath || RL.simS > 700) {   // recalcular el recorrido virtual
-    const s = rlSnap(RL.pos, RL.hdg, RL.simPath ? 12 : 500);   // en marcha va encima de la carretera: no saltar a otra cercana
+  if (!RL.simPlaced) {   // al empezar: ponerse encima de la carretera más cercana y fijar el recorrido
+    const s = rlSnap(RL.pos, RL.hdg, 500, 3) || rlSnap(RL.pos, RL.hdg, 500);   // mejor empezar en una carretera de verdad que en una calle
     if (!s) { rlMsg(`No encuentro carretera para simular (${RL.ways.length} vías, la más cercana a ${isFinite(RL.nearest) ? Math.round(RL.nearest) + " m" : "?"}).`); return; }
-    if (!RL.simPath) { const w = RL.ways[s.wi], a = w.g[s.i], b = w.g[s.i + 1]; RL.pos = [a[0] + (b[0] - a[0]) * s.t, a[1] + (b[1] - a[1]) * s.t]; rlMsg(""); }   // se coloca encima de la carretera
-    RL.simPath = rlAhead(s, RL.pos); RL.simS = 0;
+    const w = RL.ways[s.wi], a = w.g[s.i], b = w.g[s.i + 1]; RL.pos = [a[0] + (b[0] - a[0]) * s.t, a[1] + (b[1] - a[1]) * s.t];
+    RL.spd = RL.simV; RL.route = null; rlMsg(""); rlTick(); if (!RL.route) return; RL.simPlaced = true;
   }
-  const dt = .25, v = RL.simV / 3.6; RL.simS += v * dt;
-  const p = rlLL(RL.simPath, RL.simS), p2 = rlLL(RL.simPath, RL.simS + 12);
-  if (!p) { RL.simPath = null; return; }
+  // el coche virtual va EXACTAMENTE por el recorrido fijado (así el recorrido y las notas no cambian)
+  if (RL.simRoute !== RL.route) { RL.simRoute = RL.route; RL.simS = RL.route.lastM || 0; }
+  RL.simS += RL.simV / 3.6 * 0.25;
+  const p = rlLL(RL.route.ll, RL.simS), p2 = rlLL(RL.route.ll, RL.simS + 12);
+  if (!p) { rlMsg("Fin de la carretera. Prueba desde otro sitio."); rlSpeak("Fin del tramo."); rlStop(); return; }
   if (p2) RL.hdg = brg([0, 0], toXY(p2[0], p2[1], p));
   RL.pos = p; RL.spd = RL.simV; $("rlSpd").textContent = RL.simV;
   rlTick();
@@ -2683,7 +2686,7 @@ async function rlInitMap() {
 }
 async function rlStart(sim) {
   await rlInitMap();
-  RL.on = true; RL.sim = !!sim; RL.said.clear(); RL.simPath = null; RL.route = null; RL.simV = +$("rlSimV").value || 70;
+  RL.on = true; RL.sim = !!sim; RL.said.clear(); RL.route = null; RL.simRoute = null; RL.simPlaced = false; RL.simV = +$("rlSimV").value || 70;
   $("rlGo").textContent = "Parar"; $("rlSim").hidden = true; $("rlSimV").hidden = true;
   rlSpeak(sim ? "Simulación. Vamos." : "Copiloto listo.");
   if (!navigator.geolocation) { rlMsg("Este navegador no da la ubicación."); return; }
