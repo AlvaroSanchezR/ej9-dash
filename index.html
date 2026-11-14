@@ -515,7 +515,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v7.8 · 14/11/2026 01:30"; // se cambia con cada actualización
+const APP_VERSION = "v7.9 · 14/11/2026 01:20"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -2453,7 +2453,7 @@ function rlAhead(s, pos) {
   let wi = s.wi, w = RL.ways[wi], dir = s.dir, len = 0;
   let idx = dir === 1 ? s.i + 1 : s.i;   // siguiente nodo en el sentido de la marcha
   const used = new Set([w.id]);
-  for (let guard = 0; guard < 400 && len < 1200; guard++) {
+  for (let guard = 0; guard < 500 && len < 1500; guard++) {
     const p = w.g[idx]; len += dist(toXY(p[0], p[1], pos), toXY(pts[pts.length - 1][0], pts[pts.length - 1][1], pos)); pts.push(p);
     const nid = w.nodes[idx], next = idx + dir;
     const endOfWay = next < 0 || next >= w.g.length;
@@ -2533,33 +2533,55 @@ function rlSpeak(txt) {
 function noteTxt(c) { return c.grade === "H" ? `horquilla ${c.dir}` : `${c.dir} ${GR_TXT[c.grade]}${c.mod ? " " + c.mod : ""}`; }
 
 /* ---------- Bucle: posición → carretera → notas ---------- */
+// Dónde vas dentro del recorrido fijado: metros recorridos y lo lejos que estás de él
+function rlProg(R, pos) {
+  let acc = 0, best = { m: 0, off: Infinity };
+  const lo = R.lastM != null ? R.lastM - 60 : -1, hi = R.lastM != null ? R.lastM + 400 : Infinity;   // no saltar al otro lado de una horquilla
+  for (let i = 1; i < R.ll.length; i++) {
+    const a = toXY(R.ll[i - 1][0], R.ll[i - 1][1], pos), b = toXY(R.ll[i][0], R.ll[i][1], pos);
+    const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1, seg = Math.sqrt(L2);
+    if (acc + seg >= lo && acc <= hi) {
+      const t = Math.max(0, Math.min(1, -(a[0] * dx + a[1] * dy) / L2)), d = Math.hypot(a[0] + t * dx, a[1] + t * dy);
+      if (d < best.off) best = { m: acc + t * seg, off: d };
+    }
+    acc += seg;
+  }
+  R.lastM = best.m;
+  return best;
+}
+const llLen = ll => { let a = 0; for (let i = 1; i < ll.length; i++) a += dist(toXY(ll[i][0], ll[i][1], ll[i - 1]), [0, 0]); return a; };
 function rlTick() {
   if (!RL.on || !RL.pos) return;
   const pos = RL.pos;
   if (!RL.area || dist(toXY(pos[0], pos[1], [RL.area.lat, RL.area.lon]), [0, 0]) > RL.area.r - (RL.area.r > 1500 ? 1100 : 450)) rlFetch(pos[0], pos[1]);
   if (!RL.ways.length) return;
-  const s = rlSnap(pos, RL.hdg);
-  if (!s) { if (!RL.fetching) rlMsg(`Buscando la carretera… (${RL.ways.length} vías, la más cercana a ${isFinite(RL.nearest) ? Math.round(RL.nearest) + " m" : "?"})`); rlBox(null); return; }
-  const w = RL.ways[s.wi]; $("rlRoad").textContent = w.name;
-  const ahead = rlAhead(s, pos); RL.path = ahead;
-  const { corners } = rlCorners(ahead); RL.corners = corners;
-  const v = Math.max(RL.spd, 15) / 3.6, lead = Math.max(90, v * 5.5);   // ~5,5 s de antelación
-  const next = corners.find(c => c.e > 15);
-  rlBox(next, corners[corners.indexOf(next) + 1]);
-  // cantar la siguiente curva cuando entra en el margen de aviso (identificada por su posición en el mapa)
-  if (next && next.s <= lead) {
-    const q = rlLL(ahead, next.peak);
-    const known = q && [...RL.said].some(p => dist(toXY(p[0], p[1], q), [0, 0]) < 45);   // ya cantada (misma curva)
-    if (q && !known) {
-      RL.said.add(q); if (RL.said.size > 60) RL.said = new Set([...RL.said].slice(-30));
-      let txt = noteTxt(next);
-      const nn = corners[corners.indexOf(next) + 1];
-      if (nn && nn.s - next.e < 45) { txt += " y " + noteTxt(nn); const q2 = rlLL(ahead, nn.peak); if (q2) RL.said.add(q2); }
-      else if (nn && nn.s - next.e > 150 && nn.s - next.e < 400) txt += `, ${Math.round((nn.s - next.e) / 50) * 50}`;
-      rlSpeak(txt);
-    }
+  // El recorrido de delante se calcula UNA vez y se queda fijo (las notas no bailan). Se rehace si te sales de él o se acaba.
+  let R = RL.route, prog = R ? rlProg(R, pos) : null;
+  if (!R || prog.off > 30 || R.len - prog.m < 600) {
+    const s = rlSnap(pos, RL.hdg);
+    if (!s) { if (!RL.fetching) rlMsg(`Buscando la carretera… (${RL.ways.length} vías, la más cercana a ${isFinite(RL.nearest) ? Math.round(RL.nearest) + " m" : "?"})`); rlBox(null); return; }
+    $("rlRoad").textContent = RL.ways[s.wi].name;
+    const ll = rlAhead(s, pos), { corners } = rlCorners(ll);
+    corners.forEach(c => {   // una curva que ya estaba calculada conserva su nota
+      c.at = rlLL(ll, c.peak);
+      const old = R && c.at && R.corners.find(o => o.at && dist(toXY(o.at[0], o.at[1], c.at), [0, 0]) < 30);
+      if (old) { c.grade = old.grade; c.mod = old.mod; c.dir = old.dir; }
+    });
+    R = RL.route = { ll, corners, len: llLen(ll) }; prog = rlProg(R, pos);
   }
-  rlDraw(ahead, corners);
+  const at = prog.m, cs = R.corners.map(c => ({ ...c, s: c.s - at, e: c.e - at }));
+  const v = Math.max(RL.spd, 15) / 3.6, lead = Math.max(90, v * 5.5);   // ~5,5 s de antelación
+  const i = cs.findIndex(c => c.e > 15), next = cs[i], nn = i >= 0 ? cs[i + 1] : null;
+  rlBox(next, nn);
+  // cantar la siguiente curva cuando entra en el margen de aviso (cada curva una sola vez)
+  if (next && next.s <= lead && next.at && ![...RL.said].some(p => dist(toXY(p[0], p[1], next.at), [0, 0]) < 45)) {
+    RL.said.add(next.at); if (RL.said.size > 60) RL.said = new Set([...RL.said].slice(-30));
+    let txt = noteTxt(next);
+    if (nn && nn.s - next.e < 45) { txt += " y " + noteTxt(nn); if (nn.at) RL.said.add(nn.at); }
+    else if (nn && nn.s - next.e > 150 && nn.s - next.e < 400) txt += `, ${Math.round((nn.s - next.e) / 50) * 50}`;
+    rlSpeak(txt);
+  }
+  rlDraw(R);
 }
 // punto del recorrido a X metros (para dibujar y para no repetir notas)
 function rlLL(ll, m) {
@@ -2602,13 +2624,15 @@ function rlBox(c, nn) {
   $("rlDist").textContent = c.s > 15 ? Math.round(c.s / 10) * 10 + " m" : "AHORA";
   $("rlNext").textContent = nn ? "Luego: " + noteTxt(nn) + " · " + Math.round((nn.s - c.e) / 10) * 10 + " m" : "";
 }
-function rlDraw(ahead, corners) {
+function rlDraw(R) {
   if (!RL.map) return;
   RL.me.setLatLng(RL.pos);
   if (RL.follow !== false) RL.map.setView(RL.pos, RL.map.getZoom(), { animate: !RL.sim });
-  RL.lines.clearLayers();
-  L.polyline(ahead, { color: "#ffffff", weight: 5, opacity: .35 }).addTo(RL.lines);
-  corners.forEach(c => { const seg = rlSlice(ahead, c.s, c.e); if (seg.length > 1) L.polyline(seg, { color: GR_COL[c.grade], weight: 7, opacity: .95 }).addTo(RL.lines); });
+  if (RL.drawnRoute !== R) {   // las líneas solo se dibujan cuando cambia el recorrido: no parpadean
+    RL.drawnRoute = R; RL.lines.clearLayers();
+    L.polyline(R.ll, { color: "#ffffff", weight: 5, opacity: .35 }).addTo(RL.lines);
+    R.corners.forEach(c => { const seg = rlSlice(R.ll, c.s, c.e); if (seg.length > 1) L.polyline(seg, { color: GR_COL[c.grade], weight: 7, opacity: .95 }).addTo(RL.lines); });
+  }
   if (RL.hdg != null) $("rlMe").style.transform = `rotate(${RL.hdg}deg)`;
 }
 
@@ -2659,7 +2683,7 @@ async function rlInitMap() {
 }
 async function rlStart(sim) {
   await rlInitMap();
-  RL.on = true; RL.sim = !!sim; RL.said.clear(); RL.simPath = null; RL.simV = +$("rlSimV").value || 70;
+  RL.on = true; RL.sim = !!sim; RL.said.clear(); RL.simPath = null; RL.route = null; RL.simV = +$("rlSimV").value || 70;
   $("rlGo").textContent = "Parar"; $("rlSim").hidden = true; $("rlSimV").hidden = true;
   rlSpeak(sim ? "Simulación. Vamos." : "Copiloto listo.");
   if (!navigator.geolocation) { rlMsg("Este navegador no da la ubicación."); return; }
