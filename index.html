@@ -269,9 +269,10 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
     <div id="rlMap"></div>
     <div class="rlmsg" id="rlMsg" hidden></div>
     <div class="rlhud"><b id="rlSpd">0</b><span>km/h</span><em id="rlRoad"></em></div>
-    <div class="rlz"><button class="b" id="rlZin">+</button><button class="b" id="rlZout">−</button></div>
+    <div class="rlz"><button class="b" id="rlCenter" hidden title="Volver a centrar">◎</button><button class="b" id="rlZin">+</button><button class="b" id="rlZout">−</button></div>
   </div>
   <div class="rlbar">
+    <button class="b" id="rlExit">← Salir</button>
     <button class="b pri" id="rlGo">Iniciar</button>
     <button class="b" id="rlSim">Probar aquí</button>
     <select id="rlSimV" class="b" aria-label="Velocidad de la prueba"><option value="50">50 km/h</option><option value="70" selected>70 km/h</option><option value="90">90 km/h</option><option value="120">120 km/h</option></select>
@@ -312,7 +313,6 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
   <button data-v="full" aria-label="Pantalla completa"></button>
   <button data-v="shop" aria-label="Pantalla taller"></button>
   <button data-v="g" aria-label="Pantalla fuerzas G"></button>
-  <button data-v="rally" aria-label="Pantalla rutas con notas"></button>
 </nav>
 
 <button class="menu" id="menuBtn" aria-label="Menú"><i></i></button>
@@ -433,6 +433,7 @@ button.b.pri{background:var(--red);border-color:var(--red);color:#fff}
       <button class="b" id="perfBtn">Cronómetro 0–100</button>
       <button class="b" id="dynoBtn">Dinamómetro</button>
       <button class="b" id="gpsBtn">Velocidad real (GPS)</button>
+      <button class="b" id="rallyBtn">Rutas · copiloto</button>
       <button class="b" id="infoBtn">¿Qué es cada dato?</button>
       <button class="b" id="closeMenu">Cerrar</button>
     </div>
@@ -514,7 +515,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v7.6 · 14/11/2026 01:10"; // se cambia con cada actualización
+const APP_VERSION = "v7.7 · 14/11/2026 01:15"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -1686,11 +1687,12 @@ $("closePick").onclick = closeOv;
 function rebuild() { buildCells(); build(); status($("stat").textContent, mode); }
 
 /* ---------- Pantallas: calle · completa · taller ---------- */
-const VIEWS = ["street", "full", "shop", "g", "rally"];
+const VIEWS = ["street", "full", "shop", "g"];   // Rutas va aparte (desde el menú), para poder mover el mapa
 const SEGS = [];
 for (let i = 0; i < 40; i++) SEGS.push($("sbar").appendChild(document.createElement("i")));
 function setView(v) {
-  if (!VIEWS.includes(v)) v = "full";
+  if (v === "rally") { if (cfg.view !== "rally") RL.back = cfg.view; }
+  else if (!VIEWS.includes(v)) v = "full";
   cfg.view = v; saveCfg();
   $("app").hidden = v !== "full"; $("street").hidden = v !== "street"; $("shop").hidden = v !== "shop"; $("gview").hidden = v !== "g"; $("rally").hidden = v !== "rally";
   applyOrient();
@@ -1702,11 +1704,11 @@ function setView(v) {
 }
 let dotsT = 0;
 function showDots() { $("dots").classList.add("show"); clearTimeout(dotsT); dotsT = setTimeout(() => $("dots").classList.remove("show"), 2500); }
-function stepView(d) { const i = VIEWS.indexOf(cfg.view) + d; if (i >= 0 && i < VIEWS.length) setView(VIEWS[i]); }
+function stepView(d) { if (cfg.view === "rally") return; const i = VIEWS.indexOf(cfg.view) + d; if (i >= 0 && i < VIEWS.length) setView(VIEWS[i]); }
 $("dots").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setView(b.dataset.v); });
 let tx0 = null, ty0 = 0;
 document.addEventListener("touchstart", e => {
-  if (OVS.some(o => !$(o).hidden) || e.touches.length > 1) { tx0 = null; return; }
+  if (OVS.some(o => !$(o).hidden) || e.touches.length > 1 || cfg.view === "rally") { tx0 = null; return; }
   tx0 = e.touches[0].clientX; ty0 = e.touches[0].clientY;
 }, { passive: true });
 document.addEventListener("touchend", e => {
@@ -2324,7 +2326,7 @@ function rlSnap(pos, hdg, maxD) {
       let dir = 1, dh = 0;
       if (hdg != null) { dh = Math.abs(angN(sb - hdg)); if (dh > 90) { dir = -1; dh = 180 - dh; } }
       if (dir === -1 && w.oneway) continue;
-      const score = d + dh * 0.6 - w.rank * 2;
+      const score = d * 1.5 + dh * 0.4 - w.rank * 2;   // pesa más estar encima que el rumbo (en horquillas el otro lado está cerca)
       if (!best || score < best.score) best = { score, wi, i, t, dir };
     }
   });
@@ -2486,7 +2488,7 @@ function rlBox(c, nn) {
 function rlDraw(ahead, corners) {
   if (!RL.map) return;
   RL.me.setLatLng(RL.pos);
-  RL.map.setView(RL.pos, RL.map.getZoom(), { animate: !RL.sim });
+  if (RL.follow !== false) RL.map.setView(RL.pos, RL.map.getZoom(), { animate: !RL.sim });
   RL.lines.clearLayers();
   L.polyline(ahead, { color: "#ffffff", weight: 5, opacity: .35 }).addTo(RL.lines);
   corners.forEach(c => { const seg = rlSlice(ahead, c.s, c.e); if (seg.length > 1) L.polyline(seg, { color: GR_COL[c.grade], weight: 7, opacity: .95 }).addTo(RL.lines); });
@@ -2509,7 +2511,7 @@ function rlSimStep() {
   if (!RL.sim || !RL.on) return;
   if (!RL.ways.length) { rlFetch(RL.pos[0], RL.pos[1]); return; }   // aún sin carreteras: pedirlas (con su mensaje)
   if (!RL.simPath || RL.simS > 700) {   // recalcular el recorrido virtual
-    const s = rlSnap(RL.pos, RL.hdg, RL.simPath ? 60 : 500);
+    const s = rlSnap(RL.pos, RL.hdg, RL.simPath ? 12 : 500);   // en marcha va encima de la carretera: no saltar a otra cercana
     if (!s) { rlMsg(`No encuentro carretera para simular (${RL.ways.length} vías, la más cercana a ${isFinite(RL.nearest) ? Math.round(RL.nearest) + " m" : "?"}).`); return; }
     if (!RL.simPath) { const w = RL.ways[s.wi], a = w.g[s.i], b = w.g[s.i + 1]; RL.pos = [a[0] + (b[0] - a[0]) * s.t, a[1] + (b[1] - a[1]) * s.t]; rlMsg(""); }   // se coloca encima de la carretera
     RL.simPath = rlAhead(s, RL.pos); RL.simS = 0;
@@ -2532,9 +2534,10 @@ async function rlLoadMap() {
 }
 async function rlInitMap() {
   if (RL.map || !(await rlLoadMap())) return;
-  RL.map = L.map("rlMap", { zoomControl: false, attributionControl: true, dragging: false, keyboard: false, boxZoom: false, doubleClickZoom: false }).setView([40.67, -4.09], 16);
+  RL.map = L.map("rlMap", { zoomControl: false, attributionControl: true, dragging: true, keyboard: false, boxZoom: false, doubleClickZoom: false }).setView([40.67, -4.09], 16);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap", className: "rltiles" }).addTo(RL.map);
   RL.lines = L.layerGroup().addTo(RL.map);
+  RL.map.on("dragstart", () => { RL.follow = false; $("rlCenter").hidden = false; });
   RL.me = L.marker([40.67, -4.09], { icon: L.divIcon({ className: "rlme", html: '<i id="rlMe"></i>', iconSize: [26, 26] }) }).addTo(RL.map);
 }
 async function rlStart(sim) {
@@ -2564,6 +2567,9 @@ function rlStop() {
 $("rlGo").onclick = () => { unlockAudio(); RL.on ? rlStop() : rlStart(false); };
 $("rlSim").onclick = () => { unlockAudio(); rlStart(true); };
 $("rlZin").onclick = () => RL.map && RL.map.zoomIn();
+$("rallyBtn").onclick = () => { closeOv(); setView("rally"); };
+$("rlExit").onclick = () => { if (RL.on) rlStop(); setView(RL.back || "full"); };
+$("rlCenter").onclick = () => { RL.follow = true; $("rlCenter").hidden = true; if (RL.pos && RL.map) RL.map.setView(RL.pos, RL.map.getZoom()); };
 $("rlZout").onclick = () => RL.map && RL.map.zoomOut();
 try { speechSynthesis.onvoiceschanged = () => { RL.voice = null; }; } catch (e) {}
 
