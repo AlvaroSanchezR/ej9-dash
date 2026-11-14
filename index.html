@@ -86,7 +86,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--ui);margin:0;
 .rlmapw{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);min-height:0}
 #rlMap{position:absolute;inset:0;background:#111}
 .rltiles{filter:invert(1) hue-rotate(180deg) brightness(.8) contrast(.9) saturate(.6)}
-.rlmsg{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:500;background:rgba(0,0,0,.8);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:14px;white-space:nowrap}
+.rlmsg{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:500;background:rgba(0,0,0,.85);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;width:max-content;max-width:88%;text-align:center}
 .rlhud{position:absolute;left:10px;bottom:10px;z-index:500;background:rgba(0,0,0,.75);border-radius:10px;padding:4px 10px;display:flex;align-items:baseline;gap:6px}
 .rlhud b{font-family:var(--race);font-size:30px}.rlhud span{font-size:12px;color:var(--dim)}.rlhud em{font-style:normal;font-size:12px;color:#aaa;margin-left:6px}
 .rlz{position:absolute;right:10px;bottom:10px;z-index:500;display:flex;flex-direction:column;gap:6px}.rlz .b{width:40px;height:40px;padding:0;font-size:22px}
@@ -514,7 +514,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v7.5 · 14/11/2026 01:10"; // se cambia con cada actualización
+const APP_VERSION = "v7.6 · 14/11/2026 01:10"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -2272,18 +2272,19 @@ const brg = (a, b) => Math.atan2(b[0] - a[0], b[1] - a[1]) / RD;   // 0 = norte,
 const HW_RANK = { motorway: 6, trunk: 6, primary: 5, secondary: 4, tertiary: 3, unclassified: 2, residential: 1, motorway_link: 3, trunk_link: 3, primary_link: 3, secondary_link: 2, tertiary_link: 2, living_street: 0, service: 0 };
 
 /* ---------- Datos de la carretera (Overpass) ---------- */
-const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://lz4.overpass-api.de/api/interpreter", "https://z.overpass-api.de/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
 async function rlFetch(lat, lon) {
   if (RL.fetching || performance.now() - RL.lastFetch < 15000) return;
   RL.fetching = true; RL.lastFetch = performance.now();
-  // recuadro de ~3 x 3 km alrededor (más rápido para el servidor que un radio)
-  const dLat = 0.0135, dLon = 0.0135 / Math.cos(lat * RD);
+  // recuadro de ~2 x 2 km; si vas rápido, adelantado hacia donde vas (más rápido para el servidor que un radio)
+  if (RL.hdg != null && RL.spd > 20) { lat += 700 / mPerLat * Math.cos(RL.hdg * RD); lon += 700 / (mPerLat * Math.cos(lat * RD)) * Math.sin(RL.hdg * RD); }
+  const dLat = 0.009, dLon = 0.009 / Math.cos(lat * RD);
   const bb = [lat - dLat, lon - dLon, lat + dLat, lon + dLon].map(v => v.toFixed(5)).join(",");
-  const q = `[out:json][timeout:20];way(${bb})["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"];out geom;`;
+  const q = `[out:json][timeout:25];way(${bb})["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"];out geom;`;
   const errs = [];
   for (const [n, url] of OVERPASS.entries()) {
     rlMsg(`Cargando carreteras… (servidor ${n + 1}/${OVERPASS.length})`);
-    const ac = new AbortController(), to = setTimeout(() => ac.abort(), 15000);   // si un servidor tarda, se prueba el siguiente
+    const ac = new AbortController(), to = setTimeout(() => ac.abort(), 25000);   // si un servidor tarda, se prueba el siguiente
     try {
       const r = await fetch(url + "?data=" + encodeURIComponent(q), { signal: ac.signal });
       if (!r.ok) { errs.push(`${n + 1}: ${r.status}`); continue; }
@@ -2295,7 +2296,7 @@ async function rlFetch(lat, lon) {
       }));
       RL.nodeWays = new Map();
       RL.ways.forEach((w, wi) => w.nodes.forEach((nd, ni) => { if (!RL.nodeWays.has(nd)) RL.nodeWays.set(nd, []); RL.nodeWays.get(nd).push([wi, ni]); }));
-      RL.area = { lat, lon, r: 1500 };
+      RL.area = { lat, lon, r: 950 };
       RL.fetching = false; log(`Rutas: ${RL.ways.length} vías cargadas (servidor ${n + 1})`);
       rlMsg(RL.ways.length ? "" : "No hay carreteras cerca.");
       if (RL.pos) rlTick();
@@ -2416,7 +2417,7 @@ function noteTxt(c) { return c.grade === "H" ? `horquilla ${c.dir}` : `${c.dir} 
 function rlTick() {
   if (!RL.on || !RL.pos) return;
   const pos = RL.pos;
-  if (!RL.area || dist(toXY(pos[0], pos[1], [RL.area.lat, RL.area.lon]), [0, 0]) > RL.area.r - 600) rlFetch(pos[0], pos[1]);
+  if (!RL.area || dist(toXY(pos[0], pos[1], [RL.area.lat, RL.area.lon]), [0, 0]) > RL.area.r - 450) rlFetch(pos[0], pos[1]);
   if (!RL.ways.length) return;
   const s = rlSnap(pos, RL.hdg);
   if (!s) { if (!RL.fetching) rlMsg(`Buscando la carretera… (${RL.ways.length} vías, la más cercana a ${isFinite(RL.nearest) ? Math.round(RL.nearest) + " m" : "?"})`); rlBox(null); return; }
