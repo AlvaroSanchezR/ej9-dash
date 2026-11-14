@@ -514,7 +514,7 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 /* ---------- Ajustes ---------- */
-const APP_VERSION = "v7.4 · 14/11/2026 01:00"; // se cambia con cada actualización
+const APP_VERSION = "v7.5 · 14/11/2026 01:10"; // se cambia con cada actualización
 $("appVer").textContent = APP_VERSION;
 const GEARS_EJ9 = [8.1, 15.0, 21.2, 27.1, 32.5]; // km/h por cada 1000 rpm en cada marcha (EJ9, aprox.)
 const DEF_ARCS = ["water", "oil", "tps", "mapm"];
@@ -2309,15 +2309,16 @@ async function rlFetch(lat, lon) {
 }
 
 /* ---------- En qué carretera vas y qué viene ---------- */
-function rlSnap(pos, hdg) {
-  const o = pos; let best = null;
+function rlSnap(pos, hdg, maxD) {
+  const o = pos; let best = null; RL.nearest = Infinity;
   RL.ways.forEach((w, wi) => {
     for (let i = 0; i < w.g.length - 1; i++) {
       const a = toXY(w.g[i][0], w.g[i][1], o), b = toXY(w.g[i + 1][0], w.g[i + 1][1], o);
       const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1;
       const t = Math.max(0, Math.min(1, -(a[0] * dx + a[1] * dy) / L2));
       const d = Math.hypot(a[0] + t * dx, a[1] + t * dy);
-      if (d > (RL.spd < 8 ? 150 : 35)) continue;   // parado (o en casa) se busca más lejos
+      RL.nearest = Math.min(RL.nearest, d);
+      if (d > (maxD || (RL.spd < 8 ? 150 : 35))) continue;   // parado (o en casa) se busca más lejos
       const sb = brg(a, b);
       let dir = 1, dh = 0;
       if (hdg != null) { dh = Math.abs(angN(sb - hdg)); if (dh > 90) { dir = -1; dh = 180 - dh; } }
@@ -2330,7 +2331,9 @@ function rlSnap(pos, hdg) {
 }
 // Recorre la carretera hacia delante ~1,2 km; en los cruces sigue por la más recta (y de más categoría)
 function rlAhead(s, pos) {
-  const pts = [pos]; let wi = s.wi, w = RL.ways[wi], dir = s.dir, len = 0;
+  const ga = RL.ways[s.wi].g[s.i], gb = RL.ways[s.wi].g[s.i + 1];
+  const pts = [[ga[0] + (gb[0] - ga[0]) * s.t, ga[1] + (gb[1] - ga[1]) * s.t]];   // empieza en el punto de la carretera, no en el GPS (que puede estar desviado)
+  let wi = s.wi, w = RL.ways[wi], dir = s.dir, len = 0;
   let idx = dir === 1 ? s.i + 1 : s.i;   // siguiente nodo en el sentido de la marcha
   const used = new Set([w.id]);
   for (let guard = 0; guard < 400 && len < 1200; guard++) {
@@ -2416,7 +2419,7 @@ function rlTick() {
   if (!RL.area || dist(toXY(pos[0], pos[1], [RL.area.lat, RL.area.lon]), [0, 0]) > RL.area.r - 600) rlFetch(pos[0], pos[1]);
   if (!RL.ways.length) return;
   const s = rlSnap(pos, RL.hdg);
-  if (!s) { if (!RL.fetching) rlMsg("Buscando la carretera…"); rlBox(null); return; }
+  if (!s) { if (!RL.fetching) rlMsg(`Buscando la carretera… (${RL.ways.length} vías, la más cercana a ${isFinite(RL.nearest) ? Math.round(RL.nearest) + " m" : "?"})`); rlBox(null); return; }
   const w = RL.ways[s.wi]; $("rlRoad").textContent = w.name;
   const ahead = rlAhead(s, pos); RL.path = ahead;
   const { corners } = rlCorners(ahead); RL.corners = corners;
@@ -2503,8 +2506,11 @@ function rlGps(p) {
 // "Probar aquí": un coche virtual recorre la carretera desde donde estás, a la velocidad elegida
 function rlSimStep() {
   if (!RL.sim || !RL.on) return;
+  if (!RL.ways.length) { rlFetch(RL.pos[0], RL.pos[1]); return; }   // aún sin carreteras: pedirlas (con su mensaje)
   if (!RL.simPath || RL.simS > 700) {   // recalcular el recorrido virtual
-    const s = rlSnap(RL.pos, RL.hdg); if (!s) { rlMsg("No encuentro carretera para simular."); return; }
+    const s = rlSnap(RL.pos, RL.hdg, RL.simPath ? 60 : 500);
+    if (!s) { rlMsg(`No encuentro carretera para simular (${RL.ways.length} vías, la más cercana a ${isFinite(RL.nearest) ? Math.round(RL.nearest) + " m" : "?"}).`); return; }
+    if (!RL.simPath) { const w = RL.ways[s.wi], a = w.g[s.i], b = w.g[s.i + 1]; RL.pos = [a[0] + (b[0] - a[0]) * s.t, a[1] + (b[1] - a[1]) * s.t]; rlMsg(""); }   // se coloca encima de la carretera
     RL.simPath = rlAhead(s, RL.pos); RL.simS = 0;
   }
   const dt = .25, v = RL.simV / 3.6; RL.simS += v * dt;
@@ -2538,8 +2544,12 @@ async function rlStart(sim) {
   if (!navigator.geolocation) { rlMsg("Este navegador no da la ubicación."); return; }
   rlMsg("Buscando GPS…");
   if (sim) {
-    navigator.geolocation.getCurrentPosition(p => { RL.pos = [p.coords.latitude, p.coords.longitude]; RL.hdg = null; rlFetch(RL.pos[0], RL.pos[1]).then(() => { clearInterval(rlSimI); rlSimI = setInterval(rlSimStep, 250); }); },
-      () => rlMsg("Sin permiso de ubicación: actívalo para esta web en los ajustes de Brave."), { enableHighAccuracy: true, timeout: 15000 });
+    navigator.geolocation.getCurrentPosition(p => {
+      RL.pos = [p.coords.latitude, p.coords.longitude]; RL.hdg = null; RL.spd = 0;
+      if (RL.map) { RL.me.setLatLng(RL.pos); RL.map.setView(RL.pos, 16); }
+      rlFetch(RL.pos[0], RL.pos[1]); clearInterval(rlSimI); rlSimI = setInterval(rlSimStep, 250);
+    }, e => rlMsg(e.code === 1 ? "Sin permiso de ubicación: actívalo para esta web en los ajustes de Brave." : "No llega la ubicación del GPS. Prueba junto a una ventana o fuera."),
+    { enableHighAccuracy: false, maximumAge: 120000, timeout: 20000 });
   } else {
     rlWatch = navigator.geolocation.watchPosition(rlGps, e => rlMsg(e.code === 1 ? "Sin permiso de ubicación: actívalo para esta web en los ajustes de Brave." : "Sin señal GPS."), { enableHighAccuracy: true, maximumAge: 0 });
   }
